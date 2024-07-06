@@ -73,8 +73,8 @@ func getProjects() ([]project, error) {
 	}
 
 	projects := make([]project, int(projectsResponse.Meta.Total))
-	for _, p := range projectsResponse.Projects {
-		projects = append(projects, project{p.Id, p.Name})
+	for i, p := range projectsResponse.Projects {
+		projects[i] = project{p.Id, p.Name}
 	}
 	return projects, nil
 }

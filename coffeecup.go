@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	mcli "github.com/jxskiss/mcli"
 )
@@ -10,9 +11,8 @@ func main() {
 	mcli.Add("login", loginCommand, "Login to CoffeeCup")
 	mcli.Add("start", startCommand, "Start/Resume time entry")
 
-	mcli.AddGroup("projects", "This is a command group called cmd2")
-	mcli.Add("projects list", projectsListCommand, "Do something with cmd2 sub1")
-	mcli.Add("projects alias", projectAliasCommand, "Do something with cmd2 sub1")
+	mcli.Add("projects list", projectsListCommand, "Lists all projects")
+	mcli.Add("projects alias", projectAliasCommand, "Lists the known aliases or sets new ones")
 
 	// Enable shell auto-completion, see `program completion -h` for help.
 	mcli.AddCompletion()
@@ -53,8 +53,8 @@ func projectsListCommand() {
 
 func projectAliasCommand() {
 	var args struct {
-		ProjectId int    `cli:"#R, id, The ID of the project"`
-		Alias     string `cli:"#R, alias, The alias of the project"`
+		ProjectId int    `cli:"id, The ID of the project"`
+		Alias     string `cli:"alias, The alias of the project"`
 	}
 	_, err := mcli.Parse(&args)
 	if err != nil {
@@ -66,8 +66,19 @@ func projectAliasCommand() {
 		cfg.Projects.Aliases = make(map[string]string)
 	}
 
-	cfg.Projects.Aliases[args.Alias] = fmt.Sprint(args.ProjectId)
-	writeConfig(cfg)
+	if (args.ProjectId != 0) && (args.Alias == "") {
+		fmt.Println("Please provide an alias for the project")
+		return
+	} else if (args.ProjectId == 0) && (args.Alias == "") {
+		fmt.Println("These are the known aliases:")
+		for projectId, alias := range cfg.Projects.Aliases {
+			fmt.Printf("%s: %s\n", projectId, alias)
+		}
+		return
+	} else {
+		cfg.Projects.Aliases[strconv.Itoa(args.ProjectId)] = args.Alias
+		writeConfig(cfg)
+	}
 }
 
 func startCommand() {

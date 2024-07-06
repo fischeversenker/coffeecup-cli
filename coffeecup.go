@@ -92,14 +92,16 @@ func startCommand() {
 
 	if args.Alias == "" {
 		fmt.Println("Please provide a project alias")
-		return
-	} else {
-		fmt.Println("Checking if there is a time entry from today that I can resume")
-		// get existing time entries
 		// find the most recent one from today
 		// or find the one that is currently running
 		// if there is a running one, don't do anything
 		// if there is one from today, resume it
-		// if there is none, fail and request an alias
+		return
+	} else {
+		fmt.Println("Checking if there is a time entry from today that I can resume")
+		// get existing time entries
+		// find the one from today for given project
+		// if there is one, resume it
+		// if there is none, add a new one
 	}
 }

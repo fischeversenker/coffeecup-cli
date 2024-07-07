@@ -17,7 +17,7 @@ type MyConfig struct {
 	}
 }
 
-func storeToken(accessToken string, refreshToken string) {
+func storeTokens(accessToken string, refreshToken string) {
 	cfg := readConfig()
 	cfg.User.AccessToken = accessToken
 	cfg.User.RefreshToken = refreshToken
@@ -25,7 +25,7 @@ func storeToken(accessToken string, refreshToken string) {
 	writeConfig(cfg)
 }
 
-func readToken() string {
+func getAccessToken() string {
 	cfg := readConfig()
 	return cfg.User.AccessToken
 }

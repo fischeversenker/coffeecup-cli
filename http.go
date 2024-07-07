@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 )
 
@@ -74,10 +75,10 @@ type project struct {
 	Name string
 }
 
-type projects struct {
+type projectsResponse struct {
 	Projects []project
 	Meta     struct {
-		Total float64
+		Total int
 	}
 	Status int
 }
@@ -88,7 +89,7 @@ func getProjects() ([]project, error) {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+readToken())
+	req.Header.Set("Authorization", "Bearer "+getAccessToken())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -96,7 +97,7 @@ func getProjects() ([]project, error) {
 	}
 	defer resp.Body.Close()
 
-	var projectsResponse projects
+	var projectsResponse projectsResponse
 	err = json.NewDecoder(resp.Body).Decode(&projectsResponse)
 	if err != nil {
 		return nil, err
@@ -110,4 +111,52 @@ func getProjects() ([]project, error) {
 		projects[i] = project{p.Id, p.Name}
 	}
 	return projects, nil
+}
+
+type timeEntry struct {
+	Id        int
+	Project   int
+	Task      int
+	Team      int
+	User      int
+	Comment   string
+	Running   bool
+	CreatedAt string
+	Day       string
+	Duration  int
+}
+
+type timeEntriesResponse struct {
+	TimeEntries []timeEntry
+	Meta        struct {
+		Total int
+	}
+}
+
+func getTimeEntries() ([]timeEntry, error) {
+	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/timeentries", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+getAccessToken())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var timeEntries timeEntriesResponse
+	err = json.NewDecoder(resp.Body).Decode(&timeEntries)
+	if err != nil {
+		return nil, err
+	}
+
+	// sort time entries (timeEntries.TimeEntries) by CreatedAt
+	sort.Slice(timeEntries.TimeEntries, func(i, j int) bool {
+		return timeEntries.TimeEntries[i].CreatedAt > timeEntries.TimeEntries[j].CreatedAt
+	})
+
+	return timeEntries.TimeEntries, nil
 }

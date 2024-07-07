@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	mcli "github.com/jxskiss/mcli"
 )
@@ -10,6 +11,7 @@ import (
 func main() {
 	mcli.Add("login", loginCommand, "Login to CoffeeCup")
 	mcli.Add("start", startCommand, "Start/Resume time entry")
+	mcli.Add("today", todayCommand, "Show today's time entries")
 
 	mcli.Add("projects list", projectsListCommand, "Lists all projects")
 	mcli.Add("projects alias", projectAliasCommand, "Lists the known aliases or sets new ones")
@@ -36,7 +38,7 @@ func loginCommand() {
 		panic(err)
 	}
 
-	storeToken(accessToken, refreshToken)
+	storeTokens(accessToken, refreshToken)
 	fmt.Printf("Successfully logged in as %s\n", args.Username)
 }
 
@@ -47,7 +49,7 @@ func loginUsingRefreshToken() {
 		panic(err)
 	}
 
-	storeToken(accessToken, refreshToken)
+	storeTokens(accessToken, refreshToken)
 }
 
 func projectsListCommand() {
@@ -120,5 +122,39 @@ func startCommand() {
 		// find the one from today for given project
 		// if there is one, resume it
 		// if there is none, add a new one
+	}
+}
+
+func todayCommand() {
+	timeEntries, err := getTimeEntries()
+
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		loginUsingRefreshToken()
+		timeEntries, err = getTimeEntries()
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	currentDate := time.Now().Format("2013-07-21")
+	cfg := readConfig()
+	aliases := cfg.Projects.Aliases
+
+	hasEntriesForToday := false
+	// only list the ones from today
+	for _, timeEntry := range timeEntries {
+		if timeEntry.Day == currentDate {
+			hasEntriesForToday = true
+			hours := timeEntry.Duration / 3600
+			minutes := (timeEntry.Duration % 3600) / 60
+
+			fmt.Printf("#########\nProject: %s\nDuration: %d:%d\nComment:\n%s\n#########\n", aliases[strconv.Itoa(timeEntry.Project)], hours, minutes, timeEntry.Comment)
+		}
+	}
+
+	if !hasEntriesForToday {
+		fmt.Println("(no time entries for today)")
 	}
 }

@@ -31,17 +31,34 @@ func loginCommand() {
 		panic(err)
 	}
 
-	accesstoken, responsetoken, err := login(args.CompanyUrl, args.Username, args.Password)
+	accessToken, refreshToken, err := login(args.CompanyUrl, args.Username, args.Password)
 	if err != nil {
 		panic(err)
 	}
 
-	storeToken(accesstoken, responsetoken)
+	storeToken(accessToken, refreshToken)
 	fmt.Printf("Successfully logged in as %s\n", args.Username)
+}
+
+func loginUsingRefreshToken() {
+	cfg := readConfig()
+	accessToken, refreshToken, err := refresh(cfg.User.RefreshToken)
+	if err != nil {
+		panic(err)
+	}
+
+	storeToken(accessToken, refreshToken)
 }
 
 func projectsListCommand() {
 	projects, err := getProjects()
+
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		loginUsingRefreshToken()
+		projects, err = getProjects()
+	}
+
 	if err != nil {
 		panic(err)
 	}
@@ -70,9 +87,9 @@ func projectAliasCommand() {
 		fmt.Println("Please provide an alias for the project")
 		return
 	} else if (args.ProjectId == 0) && (args.Alias == "") {
-		fmt.Println("These are the known aliases:")
+		fmt.Println("Configured aliases:")
 		for projectId, alias := range cfg.Projects.Aliases {
-			fmt.Printf("%s: %s\n", projectId, alias)
+			fmt.Printf("- %s: %s\n", projectId, alias)
 		}
 		return
 	} else {

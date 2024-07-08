@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	mcli "github.com/jxskiss/mcli"
+	"github.com/ttacon/chalk"
 )
 
 func main() {
@@ -116,17 +117,33 @@ func StartCommand() {
 
 	if args.Alias == "" {
 		fmt.Println("Please provide a project alias")
-		// find the most recent one from today
-		// or find the one that is currently running
-		// if there is a running one, don't do anything
-		// if there is one from today, resume it
+		// todo: use previously used project for convenience
 		return
 	} else {
-		fmt.Println("Checking if there is a time entry from today that I can resume")
-		// get existing time entries
-		// find the one from today for given project
-		// if there is one, resume it
-		// if there is none, add a new one
+		timeEntries, _ := GetTodaysTimeEntries()
+		projectAliases := ReadConfig().Projects.Aliases
+		resumedExisting := false
+		for _, timeEntry := range timeEntries {
+			if projectAliases[strconv.Itoa(timeEntry.Project)] == args.Alias {
+				if timeEntry.Running {
+					fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
+					return
+				}
+
+				// resume the time entry
+				// ResumeTimeEntry(timeEntry.Id)
+				resumedExisting = true
+				return
+			} else {
+				// if it's running, stop it
+				// StopTimeEntry(timeEntry.Id)
+			}
+		}
+
+		if !resumedExisting {
+			// start a new time entry
+			// CreateNewRunningTimeEntry(projectId)
+		}
 	}
 }
 

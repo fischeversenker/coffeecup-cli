@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // returns accesstoken, refreshtoken, and error
@@ -41,10 +43,39 @@ func LoginWithPassword(company string, username string, password string) (string
 	return responseBody["access_token"].(string), responseBody["refresh_token"].(string), nil
 }
 
-func LoginWithRefreshToken(refreshToken string) (string, string, error) {
+func GetUserId() (int, error) {
+	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/users/me", nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	type UserResponse struct {
+		User struct {
+			Id int
+		}
+	}
+
+	var responseBody UserResponse
+	err = json.NewDecoder(resp.Body).Decode(&responseBody)
+	if err != nil {
+		panic(err)
+	}
+
+	return responseBody.User.Id, nil
+}
+
+func LoginWithRefreshToken() (string, string, error) {
 	reqBody := url.Values{
 		"grant_type":    []string{"refresh_token"},
-		"refresh_token": []string{refreshToken},
+		"refresh_token": []string{GetRefreshTokenFromConfig()},
 	}
 
 	req, err := http.NewRequest("POST", "https://api.coffeecupapp.com/oauth2/token", strings.NewReader(reqBody.Encode()))
@@ -89,7 +120,7 @@ func GetProjects() ([]Project, error) {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+GetAccessToken())
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -133,13 +164,16 @@ type TimeEntriesResponse struct {
 	}
 }
 
-func GetTimeEntries() ([]TimeEntry, error) {
-	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/timeentries", nil)
+func GetTodaysTimeEntries() ([]TimeEntry, error) {
+	userId := strconv.Itoa(GetUserIdFromConfig())
+	today := time.Now().Format("2006-01-02")
+	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&where={\"user\":\"" + userId + "\",\"day\":\"" + today + "\"}&sort=day%20ASC,sorting%20ASC"
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+GetAccessToken())
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	mcli "github.com/jxskiss/mcli"
 )
@@ -39,12 +38,18 @@ func LoginCommand() {
 	}
 
 	StoreTokens(accessToken, refreshToken)
+
+	userId, err := GetUserId()
+	if err != nil {
+		panic(err)
+	}
+
+	StoreUserId(userId)
 	fmt.Printf("Successfully logged in as %s\n", args.Username)
 }
 
 func LoginUsingRefreshToken() {
-	cfg := ReadConfig()
-	accessToken, refreshToken, err := LoginWithRefreshToken(cfg.User.RefreshToken)
+	accessToken, refreshToken, err := LoginWithRefreshToken()
 	if err != nil {
 		panic(err)
 	}
@@ -126,35 +131,30 @@ func StartCommand() {
 }
 
 func TodayCommand() {
-	timeEntries, err := GetTimeEntries()
+	timeEntries, err := GetTodaysTimeEntries()
 
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
 		LoginUsingRefreshToken()
-		timeEntries, err = GetTimeEntries()
+		timeEntries, err = GetTodaysTimeEntries()
 	}
 
 	if err != nil {
 		panic(err)
 	}
 
-	currentDate := time.Now().Format("2013-07-21")
 	cfg := ReadConfig()
 	aliases := cfg.Projects.Aliases
 
-	hasEntriesForToday := false
-	// only list the ones from today
-	for _, timeEntry := range timeEntries {
-		if timeEntry.Day == currentDate {
-			hasEntriesForToday = true
-			hours := timeEntry.Duration / 3600
-			minutes := (timeEntry.Duration % 3600) / 60
-
-			fmt.Printf("#########\nProject: %s\nDuration: %d:%d\nComment:\n%s\n#########\n", aliases[strconv.Itoa(timeEntry.Project)], hours, minutes, timeEntry.Comment)
-		}
+	if timeEntries == nil {
+		fmt.Println("No time entries for today")
+		return
 	}
 
-	if !hasEntriesForToday {
-		fmt.Println("(no time entries for today)")
+	for _, timeEntry := range timeEntries {
+		hours := timeEntry.Duration / 3600
+		minutes := (timeEntry.Duration % 3600) / 60
+
+		fmt.Printf("Project: %s\nDuration: %d:%d\nComment:\n%s\n\n", aliases[strconv.Itoa(timeEntry.Project)], hours, minutes, timeEntry.Comment)
 	}
 }

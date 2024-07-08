@@ -11,6 +11,7 @@ type Config struct {
 	User struct {
 		AccessToken  string
 		RefreshToken string
+		Id           int
 	}
 	Projects struct {
 		Aliases map[string]string
@@ -25,9 +26,26 @@ func StoreTokens(accessToken string, refreshToken string) {
 	WriteConfig(cfg)
 }
 
-func GetAccessToken() string {
+func GetAccessTokenFromConfig() string {
 	cfg := ReadConfig()
 	return cfg.User.AccessToken
+}
+
+func GetRefreshTokenFromConfig() string {
+	cfg := ReadConfig()
+	return cfg.User.RefreshToken
+}
+
+func StoreUserId(userId int) {
+	cfg := ReadConfig()
+	cfg.User.Id = userId
+
+	WriteConfig(cfg)
+}
+
+func GetUserIdFromConfig() int {
+	cfg := ReadConfig()
+	return cfg.User.Id
 }
 
 func ReadConfig() Config {

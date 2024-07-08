@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -162,6 +161,7 @@ type TimeEntriesResponse struct {
 	Meta        struct {
 		Total int
 	}
+	Status int
 }
 
 func GetTodaysTimeEntries() ([]TimeEntry, error) {
@@ -181,16 +181,14 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	}
 	defer resp.Body.Close()
 
-	var timeEntries TimeEntriesResponse
-	err = json.NewDecoder(resp.Body).Decode(&timeEntries)
+	var timeEntriesResponse TimeEntriesResponse
+	err = json.NewDecoder(resp.Body).Decode(&timeEntriesResponse)
 	if err != nil {
 		return nil, err
 	}
+	if timeEntriesResponse.Status == 401 {
+		return nil, fmt.Errorf("unauthorized")
+	}
 
-	// sort time entries (timeEntries.TimeEntries) by CreatedAt
-	sort.Slice(timeEntries.TimeEntries, func(i, j int) bool {
-		return timeEntries.TimeEntries[i].CreatedAt > timeEntries.TimeEntries[j].CreatedAt
-	})
-
-	return timeEntries.TimeEntries, nil
+	return timeEntriesResponse.TimeEntries, nil
 }

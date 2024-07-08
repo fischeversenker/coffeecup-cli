@@ -172,6 +172,7 @@ func TodayCommand() {
 		hours := timeEntry.Duration / 3600
 		minutes := (timeEntry.Duration % 3600) / 60
 
+		// todo: use more colors with chalk
 		fmt.Printf("Project: %s\nDuration: %d:%d\nComment:\n%s\n\n", aliases[strconv.Itoa(timeEntry.Project)], hours, minutes, timeEntry.Comment)
 	}
 }

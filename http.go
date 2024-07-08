@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -144,16 +145,18 @@ func GetProjects() ([]Project, error) {
 }
 
 type TimeEntry struct {
-	Id        int
-	Project   int
-	Task      int
-	Team      int
-	User      int
-	Comment   string
-	Running   bool
-	CreatedAt string
-	Day       string
-	Duration  int
+	Id           int    `json:"id"`
+	ProjectId    int    `json:"project"`
+	TaskId       int    `json:"task"`
+	TeamId       int    `json:"team"`
+	UserId       int    `json:"user"`
+	Comment      string `json:"comment"`
+	Running      bool   `json:"running"`
+	CreatedAt    string `json:"createdAt"`
+	Day          string `json:"day"`
+	Duration     int    `json:"duration"`
+	Sorting      int    `json:"sorting"`
+	TrackingType string `json:"trackingType"`
 }
 
 type TimeEntriesResponse struct {
@@ -191,4 +194,98 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	}
 
 	return timeEntriesResponse.TimeEntries, nil
+}
+
+func batchUpdateTimeEntries(timeEntriesToBeUpdated []TimeEntry) error {
+	url := "https://api.coffeecupapp.com/v1/timeEntries/batchUpdate"
+	type TimeEntryUpdate struct {
+		TimeEntries []TimeEntry `json:"timeEntries"`
+	}
+
+	timeEntryToBeUpdated := TimeEntryUpdate{
+		TimeEntries: make([]TimeEntry, 0),
+	}
+	timeEntryToBeUpdated.TimeEntries = append(timeEntryToBeUpdated.TimeEntries, timeEntriesToBeUpdated...)
+	payload, err := json.Marshal(timeEntryToBeUpdated)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", string(payload))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var timeEntriesBatchUpdateResponse struct {
+		Status int `json:"status"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&timeEntriesBatchUpdateResponse)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", timeEntriesBatchUpdateResponse)
+	if timeEntriesBatchUpdateResponse.Status == 401 {
+		return fmt.Errorf("unauthorized")
+	}
+
+	return nil
+}
+
+func UpdateTimeEntry(timeEntry TimeEntry) error {
+	url := "https://api.coffeecupapp.com/v1/timeEntries/" + strconv.Itoa(timeEntry.Id)
+
+	type TimeEntryUpdate struct {
+		TimeEntry TimeEntry `json:"timeEntry"`
+	}
+
+	timeEntryToBeUpdated := TimeEntryUpdate{
+		TimeEntry: timeEntry,
+	}
+	payload, err := json.Marshal(timeEntryToBeUpdated)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", string(payload))
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var timeEntriesBatchUpdateResponse struct {
+		Status int `json:"status"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&timeEntriesBatchUpdateResponse)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", timeEntriesBatchUpdateResponse)
+	if timeEntriesBatchUpdateResponse.Status == 401 {
+		return fmt.Errorf("unauthorized")
+	}
+
+	return nil
+}
+
+func CreateTimeEntry(timeEntry TimeEntry) error {
+	// add call to /v1/timeEntries,
+	// payload like to UpdateTimeEntry but without the project id in the url
+	return nil
 }

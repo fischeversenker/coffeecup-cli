@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"strconv"
+	"time"
 
 	mcli "github.com/jxskiss/mcli"
 	"github.com/ttacon/chalk"
@@ -88,7 +88,7 @@ func ProjectAliasCommand() {
 
 	cfg := ReadConfig()
 	if cfg.Projects.Aliases == nil {
-		cfg.Projects.Aliases = make(map[string]string)
+		cfg.Projects.Aliases = make(map[string]int)
 	}
 
 	if (args.ProjectId != 0) && (args.Alias == "") {
@@ -96,12 +96,12 @@ func ProjectAliasCommand() {
 		return
 	} else if (args.ProjectId == 0) && (args.Alias == "") {
 		fmt.Println("Configured aliases:")
-		for projectId, alias := range cfg.Projects.Aliases {
-			fmt.Printf("- %s: %s\n", projectId, alias)
+		for alias, projectId := range cfg.Projects.Aliases {
+			fmt.Printf("%s: %d\n", alias, projectId)
 		}
 		return
 	} else {
-		cfg.Projects.Aliases[strconv.Itoa(args.ProjectId)] = args.Alias
+		cfg.Projects.Aliases[args.Alias] = args.ProjectId
 		WriteConfig(cfg)
 	}
 }
@@ -120,31 +120,60 @@ func StartCommand() {
 		// todo: use previously used project for convenience
 		return
 	} else {
-		timeEntries, _ := GetTodaysTimeEntries()
+		timeEntries, err := GetTodaysTimeEntries()
+		// retry if unauthorized
+		if err != nil && err.Error() == "unauthorized" {
+			LoginUsingRefreshToken()
+			timeEntries, err = GetTodaysTimeEntries()
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
 		projectAliases := ReadConfig().Projects.Aliases
-		resumedExisting := false
+		resumedExistingTimeEntry := false
 		for _, timeEntry := range timeEntries {
-			if projectAliases[strconv.Itoa(timeEntry.Project)] == args.Alias {
+			if projectAliases[args.Alias] == timeEntry.ProjectId {
 				if timeEntry.Running {
 					fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
 					return
 				}
 
-				// resume the time entry
-				// ResumeTimeEntry(timeEntry.Id)
-				resumedExisting = true
-				return
+				// not running, resume it
+				timeEntry.Running = true
+				UpdateTimeEntry(timeEntry)
+				resumedExistingTimeEntry = true
 			} else {
-				// if it's running, stop it
-				// StopTimeEntry(timeEntry.Id)
+				if timeEntry.Running {
+					timeEntry.Running = false
+					UpdateTimeEntry(timeEntry)
+				}
 			}
 		}
 
-		if !resumedExisting {
+		if !resumedExistingTimeEntry {
 			// start a new time entry
-			// CreateNewRunningTimeEntry(projectId)
+			projectId := projectAliases[args.Alias]
+			today := time.Now().Format("2006-01-02")
+			CreateTimeEntry(TimeEntry{
+				// EndTime: null,
+				// Invoice: null,
+				ProjectId: projectId,
+				Day:       today,
+				Sorting:   1,
+				// StartTime: null,
+				// hardcoded task id for "Frontend" for now
+				TaskId:       1095,
+				TrackingType: "WORK",
+				// Team: "402",
+				// TimeEntryReference: null,
+				UserId: GetUserIdFromConfig(),
+				// validation: null,
+			})
 		}
 	}
+
 }
 
 func TodayCommand() {
@@ -172,7 +201,15 @@ func TodayCommand() {
 		hours := timeEntry.Duration / 3600
 		minutes := (timeEntry.Duration % 3600) / 60
 
+		var projectAlias string
+		for alias, projectId := range aliases {
+			if projectId == timeEntry.ProjectId {
+				projectAlias = alias
+				break
+			}
+		}
+
 		// todo: use more colors with chalk
-		fmt.Printf("Project: %s\nDuration: %d:%d\nComment:\n%s\n\n", aliases[strconv.Itoa(timeEntry.Project)], hours, minutes, timeEntry.Comment)
+		fmt.Printf("Project: %s\nDuration: %d:%d\nComment:\n%s\n\n", projectAlias, hours, minutes, timeEntry.Comment)
 	}
 }

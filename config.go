@@ -7,7 +7,7 @@ import (
 	toml "github.com/pelletier/go-toml/v2"
 )
 
-type MyConfig struct {
+type Config struct {
 	User struct {
 		AccessToken  string
 		RefreshToken string
@@ -17,20 +17,20 @@ type MyConfig struct {
 	}
 }
 
-func storeTokens(accessToken string, refreshToken string) {
-	cfg := readConfig()
+func StoreTokens(accessToken string, refreshToken string) {
+	cfg := ReadConfig()
 	cfg.User.AccessToken = accessToken
 	cfg.User.RefreshToken = refreshToken
 
-	writeConfig(cfg)
+	WriteConfig(cfg)
 }
 
-func getAccessToken() string {
-	cfg := readConfig()
+func GetAccessToken() string {
+	cfg := ReadConfig()
 	return cfg.User.AccessToken
 }
 
-func readConfig() MyConfig {
+func ReadConfig() Config {
 	configFolderpath := filepath.Join(os.Getenv("HOME"), ".config", "coffeecup")
 	err := os.MkdirAll(configFolderpath, os.ModePerm)
 	if err != nil {
@@ -43,7 +43,7 @@ func readConfig() MyConfig {
 		panic(err)
 	}
 
-	var cfg MyConfig
+	var cfg Config
 	err = toml.Unmarshal(configFile, &cfg)
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func readConfig() MyConfig {
 	return cfg
 }
 
-func writeConfig(cfg MyConfig) {
+func WriteConfig(cfg Config) {
 	updatedConfig, err := toml.Marshal(cfg)
 	if err != nil {
 		panic(err)

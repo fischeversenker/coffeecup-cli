@@ -9,12 +9,12 @@ import (
 )
 
 func main() {
-	mcli.Add("login", loginCommand, "Login to CoffeeCup")
-	mcli.Add("start", startCommand, "Start/Resume time entry")
-	mcli.Add("today", todayCommand, "Show today's time entries")
+	mcli.Add("login", LoginCommand, "Login to CoffeeCup")
+	mcli.Add("start", StartCommand, "Start/Resume time entry")
+	mcli.Add("today", TodayCommand, "Show today's time entries")
 
-	mcli.Add("projects list", projectsListCommand, "Lists all projects")
-	mcli.Add("projects alias", projectAliasCommand, "Lists the known aliases or sets new ones")
+	mcli.Add("projects list", ProjectsListCommand, "Lists all projects")
+	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones")
 
 	// Enable shell auto-completion, see `program completion -h` for help.
 	mcli.AddCompletion()
@@ -22,7 +22,7 @@ func main() {
 	mcli.Run()
 }
 
-func loginCommand() {
+func LoginCommand() {
 	var args struct {
 		CompanyUrl string `cli:"#R, -c, --company, The prefix of the company's CoffeeCup instance (the \"amazon\" in \"amazon.coffeecup.app\")"`
 		Username   string `cli:"#R, -u, --username, The username of the user"`
@@ -33,32 +33,32 @@ func loginCommand() {
 		panic(err)
 	}
 
-	accessToken, refreshToken, err := login(args.CompanyUrl, args.Username, args.Password)
+	accessToken, refreshToken, err := LoginWithPassword(args.CompanyUrl, args.Username, args.Password)
 	if err != nil {
 		panic(err)
 	}
 
-	storeTokens(accessToken, refreshToken)
+	StoreTokens(accessToken, refreshToken)
 	fmt.Printf("Successfully logged in as %s\n", args.Username)
 }
 
-func loginUsingRefreshToken() {
-	cfg := readConfig()
-	accessToken, refreshToken, err := refresh(cfg.User.RefreshToken)
+func LoginUsingRefreshToken() {
+	cfg := ReadConfig()
+	accessToken, refreshToken, err := LoginWithRefreshToken(cfg.User.RefreshToken)
 	if err != nil {
 		panic(err)
 	}
 
-	storeTokens(accessToken, refreshToken)
+	StoreTokens(accessToken, refreshToken)
 }
 
-func projectsListCommand() {
-	projects, err := getProjects()
+func ProjectsListCommand() {
+	projects, err := GetProjects()
 
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		loginUsingRefreshToken()
-		projects, err = getProjects()
+		LoginUsingRefreshToken()
+		projects, err = GetProjects()
 	}
 
 	if err != nil {
@@ -70,7 +70,7 @@ func projectsListCommand() {
 	}
 }
 
-func projectAliasCommand() {
+func ProjectAliasCommand() {
 	var args struct {
 		ProjectId int    `cli:"id, The ID of the project"`
 		Alias     string `cli:"alias, The alias of the project"`
@@ -80,7 +80,7 @@ func projectAliasCommand() {
 		panic(err)
 	}
 
-	cfg := readConfig()
+	cfg := ReadConfig()
 	if cfg.Projects.Aliases == nil {
 		cfg.Projects.Aliases = make(map[string]string)
 	}
@@ -96,11 +96,11 @@ func projectAliasCommand() {
 		return
 	} else {
 		cfg.Projects.Aliases[strconv.Itoa(args.ProjectId)] = args.Alias
-		writeConfig(cfg)
+		WriteConfig(cfg)
 	}
 }
 
-func startCommand() {
+func StartCommand() {
 	var args struct {
 		Alias string `cli:"alias, The alias of the project"`
 	}
@@ -125,13 +125,13 @@ func startCommand() {
 	}
 }
 
-func todayCommand() {
-	timeEntries, err := getTimeEntries()
+func TodayCommand() {
+	timeEntries, err := GetTimeEntries()
 
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		loginUsingRefreshToken()
-		timeEntries, err = getTimeEntries()
+		LoginUsingRefreshToken()
+		timeEntries, err = GetTimeEntries()
 	}
 
 	if err != nil {
@@ -139,7 +139,7 @@ func todayCommand() {
 	}
 
 	currentDate := time.Now().Format("2013-07-21")
-	cfg := readConfig()
+	cfg := ReadConfig()
 	aliases := cfg.Projects.Aliases
 
 	hasEntriesForToday := false

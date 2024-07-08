@@ -10,7 +10,7 @@ import (
 )
 
 // returns accesstoken, refreshtoken, and error
-func login(company string, username string, password string) (string, string, error) {
+func LoginWithPassword(company string, username string, password string) (string, string, error) {
 	reqBody := url.Values{
 		"grant_type": []string{"password"},
 		"username":   []string{username},
@@ -41,7 +41,7 @@ func login(company string, username string, password string) (string, string, er
 	return responseBody["access_token"].(string), responseBody["refresh_token"].(string), nil
 }
 
-func refresh(refreshToken string) (string, string, error) {
+func LoginWithRefreshToken(refreshToken string) (string, string, error) {
 	reqBody := url.Values{
 		"grant_type":    []string{"refresh_token"},
 		"refresh_token": []string{refreshToken},
@@ -70,26 +70,26 @@ func refresh(refreshToken string) (string, string, error) {
 	return responseBody["access_token"].(string), responseBody["refresh_token"].(string), nil
 }
 
-type project struct {
+type Project struct {
 	Id   int
 	Name string
 }
 
-type projectsResponse struct {
-	Projects []project
+type ProjectsResponse struct {
+	Projects []Project
 	Meta     struct {
 		Total int
 	}
 	Status int
 }
 
-func getProjects() ([]project, error) {
+func GetProjects() ([]Project, error) {
 	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/projects", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+getAccessToken())
+	req.Header.Set("Authorization", "Bearer "+GetAccessToken())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -97,7 +97,7 @@ func getProjects() ([]project, error) {
 	}
 	defer resp.Body.Close()
 
-	var projectsResponse projectsResponse
+	var projectsResponse ProjectsResponse
 	err = json.NewDecoder(resp.Body).Decode(&projectsResponse)
 	if err != nil {
 		return nil, err
@@ -106,14 +106,14 @@ func getProjects() ([]project, error) {
 		return nil, fmt.Errorf("unauthorized")
 	}
 
-	projects := make([]project, int(projectsResponse.Meta.Total))
+	projects := make([]Project, int(projectsResponse.Meta.Total))
 	for i, p := range projectsResponse.Projects {
-		projects[i] = project{p.Id, p.Name}
+		projects[i] = Project{p.Id, p.Name}
 	}
 	return projects, nil
 }
 
-type timeEntry struct {
+type TimeEntry struct {
 	Id        int
 	Project   int
 	Task      int
@@ -126,20 +126,20 @@ type timeEntry struct {
 	Duration  int
 }
 
-type timeEntriesResponse struct {
-	TimeEntries []timeEntry
+type TimeEntriesResponse struct {
+	TimeEntries []TimeEntry
 	Meta        struct {
 		Total int
 	}
 }
 
-func getTimeEntries() ([]timeEntry, error) {
+func GetTimeEntries() ([]TimeEntry, error) {
 	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/timeentries", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+getAccessToken())
+	req.Header.Set("Authorization", "Bearer "+GetAccessToken())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -147,7 +147,7 @@ func getTimeEntries() ([]timeEntry, error) {
 	}
 	defer resp.Body.Close()
 
-	var timeEntries timeEntriesResponse
+	var timeEntries TimeEntriesResponse
 	err = json.NewDecoder(resp.Body).Decode(&timeEntries)
 	if err != nil {
 		return nil, err

@@ -11,6 +11,7 @@ import (
 func main() {
 	mcli.Add("login", LoginCommand, "Login to CoffeeCup")
 	mcli.Add("start", StartCommand, "Start/Resume time entry")
+	mcli.Add("stop", StopCommand, "Stop any running time entries")
 	mcli.Add("today", TodayCommand, "Show today's time entries")
 
 	mcli.Add("projects list", ProjectsListCommand, "Lists all projects")
@@ -140,14 +141,19 @@ func StartCommand() {
 						timeEntry.Comment = timeEntry.Comment + "\n- " + args.Comment
 					}
 					fmt.Printf("Added comment to %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
-					UpdateTimeEntry(timeEntry)
+					err := UpdateTimeEntry(timeEntry)
+					if err != nil {
+						panic(err)
+					}
 				}
-				return
 			}
 
 			// not running, resume it
 			timeEntry.Running = true
-			UpdateTimeEntry(timeEntry)
+			err := UpdateTimeEntry(timeEntry)
+			if err != nil {
+				panic(err)
+			}
 			fmt.Printf("Resumed previous time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
 			resumedExistingTimeEntry = true
 		} else {
@@ -161,7 +167,10 @@ func StartCommand() {
 					}
 				}
 				fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
-				UpdateTimeEntry(timeEntry)
+				err := UpdateTimeEntry(timeEntry)
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 	}
@@ -189,6 +198,38 @@ func StartCommand() {
 		}
 
 		fmt.Printf("Started new time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
+	}
+}
+
+func StopCommand() {
+	timeEntries, err := GetTodaysTimeEntries()
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		LoginUsingRefreshToken()
+		timeEntries, err = GetTodaysTimeEntries()
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	projectAliases := ReadConfig().Projects.Aliases
+	for _, timeEntry := range timeEntries {
+		if timeEntry.Running {
+			timeEntry.Running = false
+			var projectAlias string
+			for alias, projectId := range projectAliases {
+				if projectId == timeEntry.ProjectId {
+					projectAlias = alias
+					break
+				}
+			}
+			fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
+			err := UpdateTimeEntry(timeEntry)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 }
 
@@ -226,6 +267,6 @@ func TodayCommand() {
 		}
 
 		// todo: use more colors with chalk
-		fmt.Printf("Project: %s\nDuration: %d:%d\nComment:\n%s\n\n", projectAlias, hours, minutes, timeEntry.Comment)
+		fmt.Printf("Project: %s\nDuration: %d:%d\nRunning: %v\nComment:\n%s\n\n", projectAlias, hours, minutes, timeEntry.Running, timeEntry.Comment)
 	}
 }

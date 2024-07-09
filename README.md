@@ -64,3 +64,11 @@ Shows if there is a currently running time entry and the time entries of today
 `cc projects alias {id} {alias}`
 
 Alias can then be used in `cc start {project alias}
+
+# Development
+
+Coffeecup API Docs:
+https://dev.coffeecupapp.com/
+
+Go CLI parser:
+https://github.com/jxskiss/mcli

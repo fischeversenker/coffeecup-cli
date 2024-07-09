@@ -12,7 +12,6 @@ type Config struct {
 		AccessToken  string
 		RefreshToken string
 		Id           int
-		TeamId       int
 	}
 	Projects struct {
 		Aliases map[string]int
@@ -47,18 +46,6 @@ func StoreUserId(userId int) {
 func GetUserIdFromConfig() int {
 	cfg := ReadConfig()
 	return cfg.User.Id
-}
-
-func storeTeamId(teamId int) {
-	cfg := ReadConfig()
-	cfg.User.TeamId = teamId
-
-	WriteConfig(cfg)
-}
-
-func GetTeamIdFromConfig() int {
-	cfg := ReadConfig()
-	return cfg.User.TeamId
 }
 
 func ReadConfig() Config {

@@ -196,18 +196,15 @@ func StartCommand() {
 			comment = "- " + args.Comment
 		}
 		err := CreateTimeEntry(NewTimeEntry{
-			ProjectId: projectId,
-			Day:       today,
-			Duration:  0,
-			Sorting:   len(timeEntries) + 1,
-			Running:   true,
-			Comment:   comment,
-			// hardcoded task id for "Frontend" for now
-			TaskId:       1095,
+			ProjectId:    projectId,
+			Day:          today,
+			Duration:     0,
+			Sorting:      len(timeEntries) + 1,
+			Running:      true,
+			Comment:      comment,
+			TaskId:       1095, // hardcoded task id for "Frontend" for now
 			TrackingType: "WORK",
-			// hardcoded team id for "Allianz" for now
-			TeamId: 402,
-			UserId: GetUserIdFromConfig(),
+			UserId:       GetUserIdFromConfig(),
 		})
 		if err != nil {
 			fmt.Printf("%s%s%s\n", chalk.Red, err, chalk.Reset)

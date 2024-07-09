@@ -159,14 +159,6 @@ type TimeEntry struct {
 	TrackingType string `json:"trackingType"`
 }
 
-type TimeEntriesResponse struct {
-	TimeEntries []TimeEntry
-	Meta        struct {
-		Total int
-	}
-	Status int
-}
-
 func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
 	today := time.Now().Format("2006-01-02")
@@ -184,6 +176,16 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	}
 	defer resp.Body.Close()
 
+	type TimeEntriesResponse struct {
+		TimeEntries []TimeEntry `json:"timeEntries"`
+		Meta        struct {
+			Total int `json:"total"`
+		} `json:"Meta"`
+		Status int    `json:"status"`
+		Error  string `json:"error"`
+		Raw    string `json:"raw"`
+	}
+
 	var timeEntriesResponse TimeEntriesResponse
 	err = json.NewDecoder(resp.Body).Decode(&timeEntriesResponse)
 	if err != nil {
@@ -191,6 +193,9 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	}
 	if timeEntriesResponse.Status == 401 {
 		return nil, fmt.Errorf("unauthorized")
+	}
+	if timeEntriesResponse.Error != "" {
+		return nil, fmt.Errorf(timeEntriesResponse.Raw)
 	}
 
 	return timeEntriesResponse.TimeEntries, nil
@@ -268,15 +273,20 @@ func UpdateTimeEntry(timeEntry TimeEntry) error {
 	}
 	defer resp.Body.Close()
 
-	var timeEntriesBatchUpdateResponse struct {
-		Status int `json:"status"`
+	var timeEntryUpdateResponse struct {
+		Status int    `json:"status"`
+		Raw    string `json:"raw"`
+		Error  string `json:"error"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&timeEntriesBatchUpdateResponse)
+	err = json.NewDecoder(resp.Body).Decode(&timeEntryUpdateResponse)
 	if err != nil {
 		return err
 	}
-	if timeEntriesBatchUpdateResponse.Status == 401 {
+	if timeEntryUpdateResponse.Status == 401 {
 		return fmt.Errorf("unauthorized")
+	}
+	if timeEntryUpdateResponse.Error != "" {
+		return fmt.Errorf(timeEntryUpdateResponse.Raw)
 	}
 
 	return nil
@@ -326,6 +336,7 @@ func CreateTimeEntry(timeEntry NewTimeEntry) error {
 	var timeEntriesCreationResponse struct {
 		Status int    `json:"status"`
 		Raw    string `json:"raw"`
+		Error  string `json:"error"`
 	}
 	err = json.NewDecoder(resp.Body).Decode(&timeEntriesCreationResponse)
 	if err != nil {
@@ -333,6 +344,9 @@ func CreateTimeEntry(timeEntry NewTimeEntry) error {
 	}
 	if timeEntriesCreationResponse.Status == 401 {
 		return fmt.Errorf("unauthorized")
+	}
+	if timeEntriesCreationResponse.Error != "" {
+		return fmt.Errorf(timeEntriesCreationResponse.Raw)
 	}
 
 	return nil

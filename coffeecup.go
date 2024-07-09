@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	mcli "github.com/jxskiss/mcli"
@@ -254,6 +255,7 @@ func TodayCommand() {
 		return
 	}
 
+	// todo: use more colors with chalk
 	for _, timeEntry := range timeEntries {
 		hours := timeEntry.Duration / 3600
 		minutes := (timeEntry.Duration % 3600) / 60
@@ -266,7 +268,13 @@ func TodayCommand() {
 			}
 		}
 
-		// todo: use more colors with chalk
-		fmt.Printf("Project: %s\nDuration: %d:%d\nRunning: %v\nComment:\n%s\n\n", projectAlias, hours, minutes, timeEntry.Running, timeEntry.Comment)
+		comment := strings.ReplaceAll(timeEntry.Comment, "\n", " ")
+		var isRunning string
+		if timeEntry.Running {
+			isRunning = "⌛"
+		} else {
+			isRunning = "  "
+		}
+		fmt.Printf("%-10s | ⌚ %02d:%02d %s | 📝 %-10s\n", projectAlias, hours, minutes, isRunning, comment)
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,7 +82,7 @@ func ProjectsListCommand() {
 
 func ProjectAliasCommand() {
 	var args struct {
-		ProjectId int    `cli:"id, The ID of the project"`
+		ProjectId string `cli:"id, The ID of the project"`
 		Alias     string `cli:"alias, The alias of the project"`
 	}
 	_, err := mcli.Parse(&args)
@@ -90,23 +91,28 @@ func ProjectAliasCommand() {
 	}
 
 	cfg := ReadConfig()
-	if cfg.Projects.Aliases == nil {
-		cfg.Projects.Aliases = make(map[string]int)
-	}
-
-	if (args.ProjectId != 0) && (args.Alias == "") {
-		fmt.Println("Please provide an alias for the project")
-		return
-	} else if (args.ProjectId == 0) && (args.Alias == "") {
+	if (args.ProjectId == "") && (args.Alias == "") {
 		fmt.Println("Configured aliases:")
-		for alias, projectId := range cfg.Projects.Aliases {
-			fmt.Printf("%s: %d\n", alias, projectId)
+		for _, project := range cfg.Projects {
+			fmt.Printf("%d: %s\n", project.Id, project.Alias)
 		}
 		return
-	} else {
-		cfg.Projects.Aliases[args.Alias] = args.ProjectId
-		WriteConfig(cfg)
 	}
+
+	if (args.ProjectId != "") && (args.Alias == "") {
+		fmt.Println("Please provide an alias for the project")
+		os.Exit(1)
+	}
+
+	project, ok := cfg.Projects[args.Alias]
+	if !ok {
+		project = ProjectConfig{}
+	}
+
+	project.Id, _ = strconv.Atoi(args.ProjectId)
+	project.Alias = args.Alias
+	cfg.Projects[args.Alias] = project
+	WriteConfig(cfg)
 }
 
 func StartCommand() {
@@ -130,12 +136,19 @@ func StartCommand() {
 		panic(err)
 	}
 
-	projectAliases := ReadConfig().Projects.Aliases
+	projectConfigs := ReadConfig().Projects
+	var targetedProjectId int
+	for _, project := range projectConfigs {
+		if project.Alias == args.Alias {
+			targetedProjectId = project.Id
+			break
+		}
+	}
 	resumedExistingTimeEntry := false
 	wasRunningAlready := false
 	for _, timeEntry := range timeEntries {
 		if timeEntry.Running {
-			if projectAliases[args.Alias] == timeEntry.ProjectId {
+			if targetedProjectId == timeEntry.ProjectId {
 				fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
 				if args.Comment != "" {
 					if timeEntry.Comment == "" {
@@ -154,9 +167,9 @@ func StartCommand() {
 				// wrong project is running, stop it
 				timeEntry.Running = false
 				var projectAlias string
-				for alias, projectId := range projectAliases {
-					if projectId == timeEntry.ProjectId {
-						projectAlias = alias
+				for _, project := range projectConfigs {
+					if project.Id == timeEntry.ProjectId {
+						projectAlias = project.Alias
 						break
 					}
 				}
@@ -167,7 +180,7 @@ func StartCommand() {
 				fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
 			}
 		} else {
-			if projectAliases[args.Alias] == timeEntry.ProjectId {
+			if targetedProjectId == timeEntry.ProjectId {
 				// not running, resume it
 				timeEntry.Running = true
 				if args.Comment != "" {
@@ -189,7 +202,7 @@ func StartCommand() {
 
 	if !resumedExistingTimeEntry && !wasRunningAlready {
 		// start a new time entry
-		projectId := projectAliases[args.Alias]
+		projectId := targetedProjectId
 		today := time.Now().Format("2006-01-02")
 		var comment string
 		if args.Comment != "" {
@@ -227,14 +240,14 @@ func StopCommand() {
 		panic(err)
 	}
 
-	projectAliases := ReadConfig().Projects.Aliases
+	projectConfigs := ReadConfig().Projects
 	for _, timeEntry := range timeEntries {
 		if timeEntry.Running {
 			timeEntry.Running = false
 			var projectAlias string
-			for alias, projectId := range projectAliases {
-				if projectId == timeEntry.ProjectId {
-					projectAlias = alias
+			for _, project := range projectConfigs {
+				if project.Id == timeEntry.ProjectId {
+					projectAlias = project.Alias
 					break
 				}
 			}
@@ -260,10 +273,9 @@ func TodayCommand() {
 		panic(err)
 	}
 
-	cfg := ReadConfig()
-	aliases := cfg.Projects.Aliases
+	projectConfigs := ReadConfig().Projects
 
-	if timeEntries == nil || len(timeEntries) == 0 {
+	if len(timeEntries) == 0 {
 		fmt.Println("No time entries for today")
 		return
 	}
@@ -274,9 +286,9 @@ func TodayCommand() {
 		minutes := (timeEntry.Duration % 3600) / 60
 
 		var projectAlias string
-		for alias, projectId := range aliases {
-			if projectId == timeEntry.ProjectId {
-				projectAlias = alias
+		for _, project := range projectConfigs {
+			if project.Id == timeEntry.ProjectId {
+				projectAlias = project.Alias
 				break
 			}
 		}

@@ -7,15 +7,19 @@ import (
 	toml "github.com/pelletier/go-toml/v2"
 )
 
+type ProjectConfig struct {
+	Alias         string
+	Id            int
+	DefaultTaskId int
+}
+
 type Config struct {
 	User struct {
 		AccessToken  string
 		RefreshToken string
 		Id           int
 	}
-	Projects struct {
-		Aliases map[string]int
-	}
+	Projects map[string]ProjectConfig
 }
 
 func StoreTokens(accessToken string, refreshToken string) {

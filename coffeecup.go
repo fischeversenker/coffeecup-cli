@@ -300,6 +300,6 @@ func TodayCommand() {
 		} else {
 			isRunning = "  "
 		}
-		fmt.Printf("%-10s | ⌚ %02d:%02d %s | 📝 %-10s\n", projectAlias, hours, minutes, isRunning, comment)
+		fmt.Printf("%-10s | %s %02dh %02dm | 📝 %-10s\n", projectAlias, isRunning, hours, minutes, comment)
 	}
 }

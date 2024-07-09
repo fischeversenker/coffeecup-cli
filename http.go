@@ -254,7 +254,6 @@ func UpdateTimeEntry(timeEntry TimeEntry) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s\n", string(payload))
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	if err != nil {
@@ -276,7 +275,6 @@ func UpdateTimeEntry(timeEntry TimeEntry) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%+v\n", timeEntriesBatchUpdateResponse)
 	if timeEntriesBatchUpdateResponse.Status == 401 {
 		return fmt.Errorf("unauthorized")
 	}
@@ -284,8 +282,58 @@ func UpdateTimeEntry(timeEntry TimeEntry) error {
 	return nil
 }
 
-func CreateTimeEntry(timeEntry TimeEntry) error {
-	// add call to /v1/timeEntries,
-	// payload like to UpdateTimeEntry but without the project id in the url
+type NewTimeEntry struct {
+	ProjectId    int    `json:"project"`
+	Comment      string `json:"comment"`
+	Day          string `json:"day"`
+	Running      bool   `json:"running"`
+	Duration     int    `json:"duration"`
+	Sorting      int    `json:"sorting"`
+	TaskId       int    `json:"task"`
+	TrackingType string `json:"trackingType"`
+	TeamId       int    `json:"team"`
+	UserId       int    `json:"user"`
+}
+
+func CreateTimeEntry(timeEntry NewTimeEntry) error {
+	url := "https://api.coffeecupapp.com/v1/timeEntries"
+
+	type TimeEntryCreation struct {
+		TimeEntry NewTimeEntry `json:"timeEntry"`
+	}
+
+	timeEntryToBeCreated := TimeEntryCreation{
+		TimeEntry: timeEntry,
+	}
+	payload, err := json.Marshal(timeEntryToBeCreated)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var timeEntriesCreationResponse struct {
+		Status int    `json:"status"`
+		Raw    string `json:"raw"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&timeEntriesCreationResponse)
+	if err != nil {
+		return err
+	}
+	if timeEntriesCreationResponse.Status == 401 {
+		return fmt.Errorf("unauthorized")
+	}
+
 	return nil
 }

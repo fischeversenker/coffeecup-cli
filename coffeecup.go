@@ -108,72 +108,88 @@ func ProjectAliasCommand() {
 
 func StartCommand() {
 	var args struct {
-		Alias string `cli:"alias, The alias of the project"`
+		Alias   string `cli:"#R, alias, The alias of the project"`
+		Comment string `cli:"comment, The comment for the time entry"`
 	}
 	_, err := mcli.Parse(&args)
 	if err != nil {
 		panic(err)
 	}
 
-	if args.Alias == "" {
-		fmt.Println("Please provide a project alias")
-		// todo: use previously used project for convenience
-		return
-	} else {
-		timeEntries, err := GetTodaysTimeEntries()
-		// retry if unauthorized
-		if err != nil && err.Error() == "unauthorized" {
-			LoginUsingRefreshToken()
-			timeEntries, err = GetTodaysTimeEntries()
-		}
+	timeEntries, err := GetTodaysTimeEntries()
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		LoginUsingRefreshToken()
+		timeEntries, err = GetTodaysTimeEntries()
+	}
 
+	if err != nil {
+		panic(err)
+	}
+
+	projectAliases := ReadConfig().Projects.Aliases
+	resumedExistingTimeEntry := false
+	for _, timeEntry := range timeEntries {
+		if projectAliases[args.Alias] == timeEntry.ProjectId {
+			if timeEntry.Running {
+				fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
+				if args.Comment != "" {
+					if timeEntry.Comment == "" {
+						timeEntry.Comment = "- " + args.Comment
+					} else {
+						timeEntry.Comment = timeEntry.Comment + "\n- " + args.Comment
+					}
+					fmt.Printf("Added comment to %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
+					UpdateTimeEntry(timeEntry)
+				}
+				return
+			}
+
+			// not running, resume it
+			timeEntry.Running = true
+			UpdateTimeEntry(timeEntry)
+			fmt.Printf("Resumed previous time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
+			resumedExistingTimeEntry = true
+		} else {
+			if timeEntry.Running {
+				timeEntry.Running = false
+				var projectAlias string
+				for alias, projectId := range projectAliases {
+					if projectId == timeEntry.ProjectId {
+						projectAlias = alias
+						break
+					}
+				}
+				fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
+				UpdateTimeEntry(timeEntry)
+			}
+		}
+	}
+
+	if !resumedExistingTimeEntry {
+		// start a new time entry
+		projectId := projectAliases[args.Alias]
+		today := time.Now().Format("2013-07-21")
+		err := CreateTimeEntry(NewTimeEntry{
+			ProjectId: projectId,
+			Day:       today,
+			Duration:  0,
+			Sorting:   len(timeEntries) + 1,
+			Running:   true,
+			Comment:   "- " + args.Comment,
+			// hardcoded task id for "Frontend" for now
+			TaskId:       1095,
+			TrackingType: "WORK",
+			// hardcoded team id for "Allianz" for now
+			TeamId: 402,
+			UserId: GetUserIdFromConfig(),
+		})
 		if err != nil {
 			panic(err)
 		}
 
-		projectAliases := ReadConfig().Projects.Aliases
-		resumedExistingTimeEntry := false
-		for _, timeEntry := range timeEntries {
-			if projectAliases[args.Alias] == timeEntry.ProjectId {
-				if timeEntry.Running {
-					fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
-					return
-				}
-
-				// not running, resume it
-				timeEntry.Running = true
-				UpdateTimeEntry(timeEntry)
-				resumedExistingTimeEntry = true
-			} else {
-				if timeEntry.Running {
-					timeEntry.Running = false
-					UpdateTimeEntry(timeEntry)
-				}
-			}
-		}
-
-		if !resumedExistingTimeEntry {
-			// start a new time entry
-			projectId := projectAliases[args.Alias]
-			today := time.Now().Format("2006-01-02")
-			CreateTimeEntry(TimeEntry{
-				// EndTime: null,
-				// Invoice: null,
-				ProjectId: projectId,
-				Day:       today,
-				Sorting:   1,
-				// StartTime: null,
-				// hardcoded task id for "Frontend" for now
-				TaskId:       1095,
-				TrackingType: "WORK",
-				// Team: "402",
-				// TimeEntryReference: null,
-				UserId: GetUserIdFromConfig(),
-				// validation: null,
-			})
-		}
+		fmt.Printf("Started new time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
 	}
-
 }
 
 func TodayCommand() {

@@ -245,6 +245,7 @@ func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
 	if err != nil {
 		return TimeEntry{}, err
 	}
+
 	if timeEntriesResponse.Status == 401 {
 		return TimeEntry{}, fmt.Errorf("unauthorized")
 	}

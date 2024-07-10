@@ -126,6 +126,10 @@ func ProjectAliasCommand() {
 		os.Exit(1)
 	}
 
+	if cfg.Projects == nil {
+		cfg.Projects = make(map[string]ProjectConfig)
+	}
+
 	project, ok := cfg.Projects[args.Alias]
 	if !ok {
 		project = ProjectConfig{}
@@ -141,6 +145,7 @@ func ProjectAliasCommand() {
 		}
 		lastTimeEntryForProject, err = GetLastTimeEntryForProject(project.Id)
 	}
+
 	if err != nil {
 		fmt.Printf("%sCouldn't determine default Task ID for this project. Please configurate it manually in your config.toml.%s\n", chalk.Red, chalk.Reset)
 	} else {

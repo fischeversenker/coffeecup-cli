@@ -13,7 +13,7 @@ If you have `go` installed, you can install the `coffeecup` cli like this:
 go install github.com/fischeversenker/coffeecup
 ```
 
-If you don't have `go` installed, download a prebuilt binary from the latest [release](https://github.com/fischeversenker/coffeecup/releases) and put it somewhere in your `$PATH`.
+If you don't have `go` installed, download a prebuilt binary from the latest [release](https://github.com/fischeversenker/coffeecup/releases/latest) and put it somewhere in your `$PATH`.
 
 ## Usage
 

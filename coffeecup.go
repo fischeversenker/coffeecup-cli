@@ -147,7 +147,7 @@ func ProjectAliasCommand() {
 	}
 
 	if err != nil {
-		fmt.Printf("%sCouldn't determine default Task ID for this project. Please configurate it manually in your config.toml.%s\n", chalk.Red, chalk.Reset)
+		fmt.Printf("%sCouldn't determine default Task ID for this project. Please run this command again or configurate it manually in your coffeecup.toml.%s\n", chalk.Red, chalk.Reset)
 	} else {
 		project.DefaultTaskId = lastTimeEntryForProject.TaskId
 	}

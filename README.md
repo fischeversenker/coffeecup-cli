@@ -1,9 +1,9 @@
 # Coffeecup CLI
 
 > [!NOTE]
-> This is a private project!
+> This is a private project! I'm not employed at Coffeecup. We just happen to use it at our company and I was missing a CLI for it.
 
-I was frustrated with starting/stopping/resuming my timers through the Coffeecup UI. This repository provides a `coffeecup` CLI command to interact with Coffeecup fom the command line.
+I was frustrated with starting/stopping/resuming my timers through the [Coffeecup UI](https://www.coffeecup.app/). This repository provides a `coffeecup` CLI command to interact with Coffeecup fom the command line.
 
 ## Installation
 

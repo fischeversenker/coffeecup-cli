@@ -33,7 +33,7 @@ func main() {
 
 func LoginCommand() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter company prefix (the \"satellytes\" in \"satellytes.coffeecup.app\"): ")
+	fmt.Print("Enter company prefix (the \"acme\" in \"acme.coffeecup.app\"): ")
 	companyName, err := reader.ReadString('\n')
 	if err != nil {
 		panic(err)
@@ -86,7 +86,7 @@ func ProjectsListCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println("Please login first")
+			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
 			os.Exit(1)
 		}
 
@@ -136,7 +136,7 @@ func ProjectAliasCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println("Please login first")
+			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
 			os.Exit(1)
 		}
 		lastTimeEntryForProject, err = GetLastTimeEntryForProject(project.Id)
@@ -168,7 +168,7 @@ func StartCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println("Please login first")
+			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -285,7 +285,7 @@ func StopCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println("Please login first")
+			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -323,7 +323,7 @@ func TodayCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println("Please login first")
+			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -335,6 +335,8 @@ func TodayCommand() {
 
 	cfg, _ := ReadConfig()
 	projectConfigs := cfg.Projects
+
+	var projects []Project
 
 	if len(timeEntries) == 0 {
 		fmt.Println("No time entries for today")
@@ -351,6 +353,22 @@ func TodayCommand() {
 			if project.Id == timeEntry.ProjectId {
 				projectAlias = project.Alias
 				break
+			}
+		}
+
+		// if we don't have an alias for this project, use the full name
+		if projectAlias == "" {
+			if projects == nil {
+				projects, err = GetProjects()
+				if err != nil {
+					panic(err)
+				}
+			}
+			for _, project := range projects {
+				if project.Id == timeEntry.ProjectId {
+					projectAlias = project.Name
+					break
+				}
 			}
 		}
 

@@ -32,7 +32,7 @@ func LoginWithPassword(company string, username string, password string) (string
 		return "", "", err
 	}
 
-	req.Header.Set("Authorization", "Basic ZW1iZXI6cHVibGlj")
+	req.Header.Set("Authorization", "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM=")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("companyurl", strings.Join([]string{"https://", company, ".coffeecup.app"}, ""))
 
@@ -98,7 +98,7 @@ func LoginWithRefreshToken() (string, string, error) {
 		return "", "", err
 	}
 
-	req.Header.Set("Authorization", "Basic ZW1iZXI6cHVibGlj")
+	req.Header.Set("Authorization", "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM=")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)

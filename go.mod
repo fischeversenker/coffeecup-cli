@@ -1,6 +1,6 @@
 module github.com/fischeversenker/coffeecup
 
-go 1.22.3
+go 1.22
 
 require (
 	github.com/jxskiss/mcli v0.9.5

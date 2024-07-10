@@ -5,6 +5,19 @@
 
 I was frustrated with starting/stopping/resuming my timers through the [Coffeecup UI](https://www.coffeecup.app/). This repository provides a `coffeecup` CLI command to interact with Coffeecup fom the command line.
 
+With this tool you don't need to leave your development environment to update your Coffeecup time entries. You can now do this:
+
+```sh
+$ coffeecup start project1 "Task A"
+# do some work
+$ coffeecup start project1 "Task B"
+# do some work
+$ coffeecup start project2 "Task C"
+# do some work
+$ coffeecup stop
+# drink beer
+```
+
 ## Installation
 
 If you have `go` installed, you can install the `coffeecup` cli like this:

@@ -1,43 +1,60 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
-	mcli "github.com/jxskiss/mcli"
+	"github.com/jxskiss/mcli"
 	"github.com/ttacon/chalk"
+	"golang.org/x/term"
 )
 
 func main() {
 	mcli.Add("login", LoginCommand, "Login to CoffeeCup")
-	mcli.Add("start", StartCommand, "Start/Resume time entry")
-	mcli.Add("stop", StopCommand, "Stop any running time entries")
-	mcli.Add("today", TodayCommand, "Show today's time entries")
+	mcli.Add("start", StartCommand, "Starts/Resumes a time entry. Needs a project alias as argument. Optionally, you can provide a comment that will be appeneded to any existing comment.\n\nExamples:\n - coffeecup start myproject\n - coffeecup start myproject \"This is a comment\"")
+	mcli.Add("stop", StopCommand, "Stops any running time entries")
+	mcli.Add("today", TodayCommand, "Lists today's time entries")
 
-	mcli.Add("projects list", ProjectsListCommand, "Lists all projects")
-	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones")
+	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
+	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
+	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones. Use \"coffeecup projects list\" to figure out the ID of your project.\n\nExamples:\n - coffeecup projects alias\n - coffeecup projects alias 90454 myproject")
 
 	// Enable shell auto-completion, see `program completion -h` for help.
-	mcli.AddCompletion()
+	// mcli.AddCompletion()
+	mcli.AddHelp()
 
 	mcli.Run()
 }
 
 func LoginCommand() {
-	var args struct {
-		CompanyUrl string `cli:"#R, -c, --company, The prefix of the company's CoffeeCup instance (the \"amazon\" in \"amazon.coffeecup.app\")"`
-		Username   string `cli:"#R, -u, --username, The username of the user"`
-		Password   string `cli:"#R, -p, --password, The password of the user"`
-	}
-	_, err := mcli.Parse(&args)
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter company prefix (the \"satellytes\" in \"satellytes.coffeecup.app\"): ")
+	companyName, err := reader.ReadString('\n')
 	if err != nil {
 		panic(err)
 	}
 
-	accessToken, refreshToken, err := LoginWithPassword(args.CompanyUrl, args.Username, args.Password)
+	fmt.Print("Enter Username: ")
+	username, err := reader.ReadString('\n')
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Print("Enter Password: ")
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println()
+	fmt.Println()
+
+	accessToken, refreshToken, err := LoginWithPassword(strings.TrimSpace(companyName), strings.TrimSpace(username), string(bytePassword))
 	if err != nil {
 		panic(err)
 	}
@@ -50,16 +67,16 @@ func LoginCommand() {
 	}
 
 	StoreUserId(userId)
-	fmt.Printf("Successfully logged in as %s\n", args.Username)
+	fmt.Printf("Successfully logged in to %s as %s\n", strings.TrimSpace(companyName), strings.TrimSpace(username))
 }
 
-func LoginUsingRefreshToken() {
+func LoginUsingRefreshToken() error {
 	accessToken, refreshToken, err := LoginWithRefreshToken()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	StoreTokens(accessToken, refreshToken)
+	return StoreTokens(accessToken, refreshToken)
 }
 
 func ProjectsListCommand() {
@@ -67,7 +84,12 @@ func ProjectsListCommand() {
 
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		LoginUsingRefreshToken()
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println("Please login first")
+			os.Exit(1)
+		}
+
 		projects, err = GetProjects()
 	}
 
@@ -76,21 +98,21 @@ func ProjectsListCommand() {
 	}
 
 	for _, project := range projects {
-		fmt.Printf("%d: %s\n", project.Id, project.Name)
+		fmt.Printf("%-8d %s\n", project.Id, project.Name)
 	}
 }
 
 func ProjectAliasCommand() {
 	var args struct {
-		ProjectId string `cli:"id, The ID of the project"`
-		Alias     string `cli:"alias, The alias of the project"`
+		ProjectId string `cli:"id, The ID of the project (optional)"`
+		Alias     string `cli:"alias, The alias of the project (optional)"`
 	}
 	_, err := mcli.Parse(&args)
 	if err != nil {
 		panic(err)
 	}
 
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 	if (args.ProjectId == "") && (args.Alias == "") {
 		fmt.Println("Configured aliases:")
 		for _, project := range cfg.Projects {
@@ -107,6 +129,22 @@ func ProjectAliasCommand() {
 	project, ok := cfg.Projects[args.Alias]
 	if !ok {
 		project = ProjectConfig{}
+	}
+
+	lastTimeEntryForProject, err := GetLastTimeEntryForProject(project.Id)
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println("Please login first")
+			os.Exit(1)
+		}
+		lastTimeEntryForProject, err = GetLastTimeEntryForProject(project.Id)
+	}
+	if err != nil {
+		fmt.Printf("%sCouldn't determine default Task ID for this project. Please configurate it manually in your config.toml.%s\n", chalk.Red, chalk.Reset)
+	} else {
+		project.DefaultTaskId = lastTimeEntryForProject.TaskId
 	}
 
 	project.Id, _ = strconv.Atoi(args.ProjectId)
@@ -128,7 +166,11 @@ func StartCommand() {
 	timeEntries, err := GetTodaysTimeEntries()
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		LoginUsingRefreshToken()
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println("Please login first")
+			os.Exit(1)
+		}
 		timeEntries, err = GetTodaysTimeEntries()
 	}
 
@@ -136,7 +178,8 @@ func StartCommand() {
 		panic(err)
 	}
 
-	projectConfigs := ReadConfig().Projects
+	cfg, _ := ReadConfig()
+	projectConfigs := cfg.Projects
 	var targetedProjectId int
 	for _, project := range projectConfigs {
 		if project.Alias == args.Alias {
@@ -144,6 +187,11 @@ func StartCommand() {
 			break
 		}
 	}
+	if targetedProjectId == 0 {
+		fmt.Printf("Project alias %s'%s'%s not found 😱\nRun %s'coffeecup help projects alias'%s to learn how to set an alias.\n", chalk.Red, args.Alias, chalk.Reset, chalk.Cyan, chalk.Reset)
+		os.Exit(1)
+	}
+
 	resumedExistingTimeEntry := false
 	wasRunningAlready := false
 	for _, timeEntry := range timeEntries {
@@ -209,12 +257,15 @@ func StartCommand() {
 			comment = "- " + args.Comment
 		}
 		err := CreateTimeEntry(NewTimeEntry{
-			ProjectId:    projectId,
-			Day:          today,
-			Duration:     0,
-			Sorting:      len(timeEntries) + 1,
-			Running:      true,
-			Comment:      comment,
+			ProjectId: projectId,
+			Day:       today,
+			Duration:  0,
+			Sorting:   len(timeEntries) + 1,
+			Running:   true,
+			Comment:   comment,
+			// get the actual task ID for this project from /taskAssignments?where={ "project": 90545 }
+			// and/or store them as the DefaultTaskId in the config
+			// To get the default: get the last timeEntry for this project and use that task id?
 			TaskId:       1095, // hardcoded task id for "Frontend" for now
 			TrackingType: "WORK",
 			UserId:       GetUserIdFromConfig(),
@@ -232,7 +283,11 @@ func StopCommand() {
 	timeEntries, err := GetTodaysTimeEntries()
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		LoginUsingRefreshToken()
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println("Please login first")
+			os.Exit(1)
+		}
 		timeEntries, err = GetTodaysTimeEntries()
 	}
 
@@ -240,7 +295,8 @@ func StopCommand() {
 		panic(err)
 	}
 
-	projectConfigs := ReadConfig().Projects
+	cfg, _ := ReadConfig()
+	projectConfigs := cfg.Projects
 	for _, timeEntry := range timeEntries {
 		if timeEntry.Running {
 			timeEntry.Running = false
@@ -265,7 +321,11 @@ func TodayCommand() {
 
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
-		LoginUsingRefreshToken()
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println("Please login first")
+			os.Exit(1)
+		}
 		timeEntries, err = GetTodaysTimeEntries()
 	}
 
@@ -273,7 +333,8 @@ func TodayCommand() {
 		panic(err)
 	}
 
-	projectConfigs := ReadConfig().Projects
+	cfg, _ := ReadConfig()
+	projectConfigs := cfg.Projects
 
 	if len(timeEntries) == 0 {
 		fmt.Println("No time entries for today")

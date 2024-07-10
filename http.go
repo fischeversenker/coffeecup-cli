@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Error        string `json:"error"`
+	Raw          string `json:"raw"`
+	Status       int    `json:"status"`
+}
+
 // returns accesstoken, refreshtoken, and error
 func LoginWithPassword(company string, username string, password string) (string, string, error) {
 	reqBody := url.Values{
@@ -34,13 +42,16 @@ func LoginWithPassword(company string, username string, password string) (string
 	}
 	defer resp.Body.Close()
 
-	var responseBody map[string]interface{}
+	var responseBody TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	if err != nil {
 		panic(err)
 	}
+	if responseBody.Error != "" {
+		return "", "", fmt.Errorf(responseBody.Raw)
+	}
 
-	return responseBody["access_token"].(string), responseBody["refresh_token"].(string), nil
+	return responseBody.AccessToken, responseBody.RefreshToken, nil
 }
 
 func GetUserId() (int, error) {
@@ -73,9 +84,13 @@ func GetUserId() (int, error) {
 }
 
 func LoginWithRefreshToken() (string, string, error) {
+	refreshToken := GetRefreshTokenFromConfig()
+	if refreshToken == "" {
+		return "", "", fmt.Errorf("no refresh token found")
+	}
 	reqBody := url.Values{
 		"grant_type":    []string{"refresh_token"},
-		"refresh_token": []string{GetRefreshTokenFromConfig()},
+		"refresh_token": []string{refreshToken},
 	}
 
 	req, err := http.NewRequest("POST", "https://api.coffeecupapp.com/oauth2/token", strings.NewReader(reqBody.Encode()))
@@ -92,13 +107,16 @@ func LoginWithRefreshToken() (string, string, error) {
 	}
 	defer resp.Body.Close()
 
-	var responseBody map[string]interface{}
+	var responseBody TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	if err != nil {
 		panic(err)
 	}
+	if responseBody.Error != "" {
+		return "", "", fmt.Errorf(responseBody.Raw)
+	}
 
-	return responseBody["access_token"].(string), responseBody["refresh_token"].(string), nil
+	return responseBody.AccessToken, responseBody.RefreshToken, nil
 }
 
 type Project struct {
@@ -107,15 +125,17 @@ type Project struct {
 }
 
 type ProjectsResponse struct {
-	Projects []Project
+	Projects []Project `json:"projects"`
 	Meta     struct {
-		Total int
-	}
-	Status int
+		Total int `json:"total"`
+	} `json:"Meta"`
+	Status int    `json:"status"`
+	Error  string `json:"error"`
+	Raw    string `json:"raw"`
 }
 
 func GetProjects() ([]Project, error) {
-	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/projects", nil)
+	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/projects?status=1", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +155,9 @@ func GetProjects() ([]Project, error) {
 	}
 	if projectsResponse.Status == 401 {
 		return nil, fmt.Errorf("unauthorized")
+	}
+	if projectsResponse.Error != "" {
+		return nil, fmt.Errorf(projectsResponse.Raw)
 	}
 
 	projects := make([]Project, int(projectsResponse.Meta.Total))
@@ -159,10 +182,20 @@ type TimeEntry struct {
 	TrackingType string `json:"trackingType"`
 }
 
+type TimeEntriesResponse struct {
+	TimeEntries []TimeEntry `json:"timeEntries"`
+	Meta        struct {
+		Total int `json:"total"`
+	} `json:"Meta"`
+	Status int    `json:"status"`
+	Error  string `json:"error"`
+	Raw    string `json:"raw"`
+}
+
 func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
 	today := time.Now().Format("2006-01-02")
-	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&where={\"user\":\"" + userId + "\",\"day\":\"" + today + "\"}&sort=day%20ASC,sorting%20ASC"
+	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&user=" + userId + "&day=" + today + "&sort=day%20ASC,sorting%20ASC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -175,16 +208,6 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	type TimeEntriesResponse struct {
-		TimeEntries []TimeEntry `json:"timeEntries"`
-		Meta        struct {
-			Total int `json:"total"`
-		} `json:"Meta"`
-		Status int    `json:"status"`
-		Error  string `json:"error"`
-		Raw    string `json:"raw"`
-	}
 
 	var timeEntriesResponse TimeEntriesResponse
 	err = json.NewDecoder(resp.Body).Decode(&timeEntriesResponse)
@@ -201,48 +224,38 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	return timeEntriesResponse.TimeEntries, nil
 }
 
-func batchUpdateTimeEntries(timeEntriesToBeUpdated []TimeEntry) error {
-	url := "https://api.coffeecupapp.com/v1/timeEntries/batchUpdate"
-	type TimeEntryUpdate struct {
-		TimeEntries []TimeEntry `json:"timeEntries"`
-	}
-
-	timeEntryToBeUpdated := TimeEntryUpdate{
-		TimeEntries: make([]TimeEntry, 0),
-	}
-	timeEntryToBeUpdated.TimeEntries = append(timeEntryToBeUpdated.TimeEntries, timeEntriesToBeUpdated...)
-	payload, err := json.Marshal(timeEntryToBeUpdated)
+func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
+	userId := strconv.Itoa(GetUserIdFromConfig())
+	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1&user=" + userId + "&project=" + strconv.Itoa(projectId) + "&sort=day%20DESC"
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
-	}
-	fmt.Printf("%s\n", string(payload))
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	if err != nil {
-		return err
+		return TimeEntry{}, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return TimeEntry{}, err
 	}
 	defer resp.Body.Close()
 
-	var timeEntriesBatchUpdateResponse struct {
-		Status int `json:"status"`
-	}
-	err = json.NewDecoder(resp.Body).Decode(&timeEntriesBatchUpdateResponse)
+	var timeEntriesResponse TimeEntriesResponse
+	err = json.NewDecoder(resp.Body).Decode(&timeEntriesResponse)
 	if err != nil {
-		return err
+		return TimeEntry{}, err
 	}
-	fmt.Printf("%+v\n", timeEntriesBatchUpdateResponse)
-	if timeEntriesBatchUpdateResponse.Status == 401 {
-		return fmt.Errorf("unauthorized")
+	if timeEntriesResponse.Status == 401 {
+		return TimeEntry{}, fmt.Errorf("unauthorized")
+	}
+	if timeEntriesResponse.Error != "" {
+		return TimeEntry{}, fmt.Errorf(timeEntriesResponse.Raw)
+	}
+	if timeEntriesResponse.Meta.Total == 0 {
+		return TimeEntry{}, fmt.Errorf("no time entries found")
 	}
 
-	return nil
+	return timeEntriesResponse.TimeEntries[0], nil
 }
 
 func UpdateTimeEntry(timeEntry TimeEntry) error {

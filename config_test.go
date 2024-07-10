@@ -16,17 +16,17 @@ func TestReadConfig(t *testing.T) {
 	defer os.Setenv("HOME", oldHome)
 
 	// Create the config file
-	configFilepath := filepath.Join(tempDir, ".config", "coffeecup", "config.toml")
+	configFilepath := filepath.Join(tempDir, ".config", "coffeecup", "coffeecup.toml")
 	configContent := []byte(`
 		[User]
-		AccessToken = "test-access-token"
+		AccessToken  = "test-access-token"
 		RefreshToken = "test-refresh-token"
-		Id = 123
+		Id           = 123
 
 		[Projects]
 		[Projects.project1]
-		Alias = "project1"
-		Id = 456
+		Alias         = "project1"
+		Id            = 456
 		DefaultTaskId = 789
 	`)
 	err := os.MkdirAll(filepath.Dir(configFilepath), os.ModePerm)
@@ -39,7 +39,7 @@ func TestReadConfig(t *testing.T) {
 	}
 
 	// Call the ReadConfig function
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 
 	// Verify the expected values
 	expectedAccessToken := "test-access-token"
@@ -70,5 +70,24 @@ func TestReadConfig(t *testing.T) {
 	expectedTaskId := 789
 	if cfg.Projects["project1"].DefaultTaskId != expectedTaskId {
 		t.Errorf("Expected task ID %d, got %d", expectedTaskId, cfg.Projects["project1"].DefaultTaskId)
+	}
+}
+
+func TestReadNotExistingConfigError(t *testing.T) {
+	// Create a temporary test directory
+	tempDir := t.TempDir()
+
+	// Set the HOME environment variable to the temporary directory
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempDir)
+	defer os.Setenv("HOME", oldHome)
+
+	// Don't create the config file
+
+	// Call the ReadConfig function
+	_, err := ReadConfig()
+
+	if err == nil {
+		t.Error("Expected an error, got nil")
 	}
 }

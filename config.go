@@ -22,73 +22,78 @@ type Config struct {
 	Projects map[string]ProjectConfig
 }
 
-func StoreTokens(accessToken string, refreshToken string) {
-	cfg := ReadConfig()
+const (
+	ConfigFolderPath = ".config/coffeecup"
+	ConfigFileName   = "coffeecup.toml"
+)
+
+func StoreTokens(accessToken string, refreshToken string) error {
+	cfg, _ := ReadConfig()
 	cfg.User.AccessToken = accessToken
 	cfg.User.RefreshToken = refreshToken
 
-	WriteConfig(cfg)
+	return WriteConfig(cfg)
 }
 
 func GetAccessTokenFromConfig() string {
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 	return cfg.User.AccessToken
 }
 
 func GetRefreshTokenFromConfig() string {
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 	return cfg.User.RefreshToken
 }
 
 func StoreUserId(userId int) {
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 	cfg.User.Id = userId
 
 	WriteConfig(cfg)
 }
 
 func GetUserIdFromConfig() int {
-	cfg := ReadConfig()
+	cfg, _ := ReadConfig()
 	return cfg.User.Id
 }
 
-func ReadConfig() Config {
-	configFolderpath := filepath.Join(os.Getenv("HOME"), ".config", "coffeecup")
-	err := os.MkdirAll(configFolderpath, os.ModePerm)
+func ReadConfig() (Config, error) {
+	err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ConfigFolderPath), os.ModePerm)
 	if err != nil {
-		panic(err)
+		return Config{}, err
 	}
 
-	configFilepath := filepath.Join(configFolderpath, "config.toml")
+	configFilepath := filepath.Join(os.Getenv("HOME"), ConfigFolderPath, ConfigFileName)
 	configFile, err := os.ReadFile(configFilepath)
 	if err != nil {
-		panic(err)
+		return Config{}, err
 	}
 
 	var cfg Config
 	err = toml.Unmarshal(configFile, &cfg)
 	if err != nil {
-		panic(err)
+		return Config{}, err
 	}
 
-	return cfg
+	return cfg, nil
 }
 
-func WriteConfig(cfg Config) {
+func WriteConfig(cfg Config) error {
 	updatedConfig, err := toml.Marshal(cfg)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	configFolderpath := filepath.Join(os.Getenv("HOME"), ".config", "coffeecup")
-	err = os.MkdirAll(configFolderpath, os.ModePerm)
+	err = os.MkdirAll(filepath.Join(os.Getenv("HOME"), ConfigFolderPath), os.ModePerm)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	configFilepath := filepath.Join(configFolderpath, "config.toml")
+	configFilepath := filepath.Join(os.Getenv("HOME"), ConfigFolderPath, ConfigFileName)
 	err = os.WriteFile(configFilepath, updatedConfig, 0644)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }

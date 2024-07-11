@@ -315,7 +315,6 @@ type NewTimeEntry struct {
 	Sorting      int    `json:"sorting"`
 	TaskId       int    `json:"task"`
 	TrackingType string `json:"trackingType"`
-	TeamId       int    `json:"team"`
 	UserId       int    `json:"user"`
 }
 

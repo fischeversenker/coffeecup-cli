@@ -20,7 +20,7 @@ func main() {
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.0.5") }, "Prints the version of Coffeecup CLI")
+	mcli.Add("version", func() { fmt.Println("v0.0.6") }, "Prints the version of Coffeecup CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
@@ -136,7 +136,7 @@ func ProjectAliasCommand() {
 	if (args.ProjectId == "") && (args.Alias == "") {
 		for _, project := range cfg.Projects {
 			if project.Alias != "" {
-				fmt.Printf("%-10s %s (%d)\n", project.Alias, project.Name, project.Id)
+				fmt.Printf("%-10s %-20s (ID: %d)\n", project.Alias, project.Name, project.Id)
 			}
 		}
 		return

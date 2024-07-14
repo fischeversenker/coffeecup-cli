@@ -20,6 +20,8 @@ func main() {
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 
+	mcli.Add("version", func() { fmt.Println("v0.0.5") }, "Prints the version of Coffeecup CLI")
+
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
 	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones. Use \"coffeecup projects list\" to figure out the ID of your project.\n\nExamples:\n - coffeecup projects alias\n - coffeecup projects alias 90454 myproject")
@@ -100,6 +102,24 @@ func ProjectsListCommand() {
 	for _, project := range projects {
 		fmt.Printf("%-8d %s\n", project.Id, project.Name)
 	}
+
+	// add to config
+	cfg, _ := ReadConfig()
+	if cfg.Projects == nil {
+		cfg.Projects = make(map[string]ProjectConfig)
+	}
+
+	for _, project := range projects {
+		currentConfig := cfg.Projects[strconv.Itoa(project.Id)]
+		cfg.Projects[strconv.Itoa(project.Id)] = ProjectConfig{
+			Id:            project.Id,
+			Name:          project.Name,
+			Alias:         currentConfig.Alias,
+			DefaultTaskId: currentConfig.DefaultTaskId,
+		}
+	}
+
+	WriteConfig(cfg)
 }
 
 func ProjectAliasCommand() {
@@ -114,9 +134,10 @@ func ProjectAliasCommand() {
 
 	cfg, _ := ReadConfig()
 	if (args.ProjectId == "") && (args.Alias == "") {
-		fmt.Println("Configured aliases:")
 		for _, project := range cfg.Projects {
-			fmt.Printf("%d: %s\n", project.Id, project.Alias)
+			if project.Alias != "" {
+				fmt.Printf("%-10s %s (%d)\n", project.Alias, project.Name, project.Id)
+			}
 		}
 		return
 	}
@@ -130,7 +151,7 @@ func ProjectAliasCommand() {
 		cfg.Projects = make(map[string]ProjectConfig)
 	}
 
-	project, ok := cfg.Projects[args.Alias]
+	project, ok := cfg.Projects[args.ProjectId]
 	if !ok {
 		project = ProjectConfig{}
 	}
@@ -147,14 +168,17 @@ func ProjectAliasCommand() {
 	}
 
 	if err != nil {
-		fmt.Printf("%sCouldn't determine default Task ID for this project. Please run this command again or configurate it manually in your coffeecup.toml.%s\n", chalk.Red, chalk.Reset)
+		fmt.Printf("%sCouldn't determine your default Task ID for project '%s'%s.\n", chalk.Red, project.Name, chalk.Reset)
+		fmt.Printf("This will prevent this program from properly starting a time entry for this project.\n")
+		fmt.Printf("You probably haven't yet booked time on this project. If you have, please run this command again.\n")
+		fmt.Printf("If you are adventurous, please configure the default task ID for this project (ID: %d) manually in %s%s%s.\n", project.Id, chalk.Cyan, GetConfigPath(), chalk.Reset)
 	} else {
 		project.DefaultTaskId = lastTimeEntryForProject.TaskId
 	}
 
 	project.Id, _ = strconv.Atoi(args.ProjectId)
 	project.Alias = args.Alias
-	cfg.Projects[args.Alias] = project
+	cfg.Projects[args.ProjectId] = project
 	WriteConfig(cfg)
 }
 

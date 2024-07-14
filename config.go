@@ -9,6 +9,7 @@ import (
 
 type ProjectConfig struct {
 	Alias         string
+	Name          string
 	Id            int
 	DefaultTaskId int
 }
@@ -96,4 +97,8 @@ func WriteConfig(cfg Config) error {
 	}
 
 	return nil
+}
+
+func GetConfigPath() string {
+	return filepath.Join(os.Getenv("HOME"), ConfigFolderPath, ConfigFileName)
 }

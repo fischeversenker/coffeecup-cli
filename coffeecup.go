@@ -210,9 +210,12 @@ func StartCommand() {
 	cfg, _ := ReadConfig()
 	projectConfigs := cfg.Projects
 	var targetedProjectId int
+	var defaultTaskId int
 	for _, project := range projectConfigs {
 		if project.Alias == args.Alias {
+			fmt.Println("Found project alias", args.Alias)
 			targetedProjectId = project.Id
+			defaultTaskId = project.DefaultTaskId
 			break
 		}
 	}
@@ -286,20 +289,19 @@ func StartCommand() {
 			comment = "- " + args.Comment
 		}
 		err := CreateTimeEntry(NewTimeEntry{
-			ProjectId: projectId,
-			Day:       today,
-			Duration:  0,
-			Sorting:   len(timeEntries) + 1,
-			Running:   true,
-			Comment:   comment,
-			// get the actual task ID for this project from /taskAssignments?where={ "project": 90545 }
-			// and/or store them as the DefaultTaskId in the config
-			// To get the default: get the last timeEntry for this project and use that task id?
-			TaskId:       1095, // hardcoded task id for "Frontend" for now
+			ProjectId:    projectId,
+			Day:          today,
+			Duration:     0,
+			Sorting:      len(timeEntries) + 1,
+			Running:      true,
+			Comment:      comment,
+			TaskId:       defaultTaskId,
 			TrackingType: "WORK",
 			UserId:       GetUserIdFromConfig(),
 		})
 		if err != nil {
+			fmt.Println("Error creating new time entry:")
+
 			fmt.Printf("%s%s%s\n", chalk.Red, err, chalk.Reset)
 			os.Exit(1)
 		}

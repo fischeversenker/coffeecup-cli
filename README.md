@@ -52,9 +52,12 @@ This will produce something like this:
 
 ```sh
 $ coffeecup today
-Project 1 | ⌛ 01h 22m | 📝 - My Comment for this time entry
+Project 1 | ⌛ 01h 15m | 📝 - My Comment for this time entry
 Project 2 |    00h 45m | 📝 - Other Comment
+total     |    02h 00m
 ```
+
+> Add `-c` to the command to get a more "colorful" output: `coffeecup today -c`
 
 ### List projects
 

@@ -348,13 +348,20 @@ func StopCommand() {
 }
 
 func TodayCommand() {
-	timeEntries, err := GetTodaysTimeEntries()
+	var args struct {
+		Color bool `cli:"-c, --color, enable colors in the output"`
+	}
+	_, err := mcli.Parse(&args)
+	if err != nil {
+		panic(err)
+	}
 
+	timeEntries, err := GetTodaysTimeEntries()
 	// retry if unauthorized
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
+			fmt.Println(chalk.Yellow.Color("Please login first using"), chalk.Bold.TextStyle("coffeecup login"))
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -374,10 +381,20 @@ func TodayCommand() {
 		return
 	}
 
+	var overallTime int
+	var longestComment int
+
+	for _, timeEntry := range timeEntries {
+		overallTime += timeEntry.Duration
+		longestComment = max(longestComment, len(timeEntry.Comment))
+	}
+
 	// todo: use more colors with chalk
 	for _, timeEntry := range timeEntries {
 		hours := timeEntry.Duration / 3600
 		minutes := (timeEntry.Duration % 3600) / 60
+		overallTime += timeEntry.Duration
+		timeString := fmt.Sprintf("%02dh %02dm", hours, minutes)
 
 		var projectAlias string
 		for _, project := range projectConfigs {
@@ -404,12 +421,23 @@ func TodayCommand() {
 		}
 
 		comment := strings.ReplaceAll(timeEntry.Comment, "\n", " ")
-		var isRunning string
 		if timeEntry.Running {
-			isRunning = "⌛"
+			fmt.Printf("%-10s | ⌛ %s | 📝 %-*s\n", projectAlias, timeString, longestComment, comment)
 		} else {
-			isRunning = "  "
+			if args.Color {
+				fmt.Printf("%-19s %s    %s %s 📝 %-*s\n", chalk.Dim.TextStyle(projectAlias), chalk.Dim.TextStyle("|"), chalk.Dim.TextStyle(timeString), chalk.Dim.TextStyle("|"), longestComment, chalk.Dim.TextStyle(comment))
+			} else {
+				fmt.Printf("%-10s |    %s | 📝 %-*s\n", projectAlias, timeString, longestComment, comment)
+			}
 		}
-		fmt.Printf("%-10s | %s %02dh %02dm | 📝 %-10s\n", projectAlias, isRunning, hours, minutes, comment)
+	}
+
+	hours := overallTime / 3600
+	minutes := (overallTime % 3600) / 60
+	time := fmt.Sprintf("%02dh %02dm", hours, minutes)
+	if args.Color {
+		fmt.Printf("%-19s %s    %s\n", chalk.Dim.TextStyle("total"), chalk.Dim.TextStyle("|"), chalk.Dim.TextStyle(time))
+	} else {
+		fmt.Printf("%-10s |    %s\n", "total", time)
 	}
 }

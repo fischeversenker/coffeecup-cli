@@ -1,11 +1,11 @@
-# Coffeecup CLI
+# CoffeeCup CLI
 
 > [!NOTE]
-> This is a private project! I'm not employed at Coffeecup. We just happen to use it at our company and I was missing a CLI for it.
+> This is a private project! I'm not employed at CoffeeCup. We just happen to use it at our company and I was missing a CLI for it.
 
-I was frustrated with starting/stopping/resuming my timers through the [Coffeecup UI](https://www.coffeecup.app/). This repository provides a `coffeecup` CLI command to interact with Coffeecup fom the command line.
+I was frustrated with starting/stopping/resuming my timers through the [CoffeeCup UI](https://www.coffeecup.app/). This repository provides a `coffeecup` CLI command to interact with CoffeeCup fom the command line.
 
-With this tool you don't need to leave your development environment to update your Coffeecup time entries. You can now do this:
+With this tool you don't need to leave your development environment to update your CoffeeCup time entries. You can now do this:
 
 ```sh
 $ coffeecup start project1 "Task A"
@@ -17,6 +17,9 @@ $ coffeecup start project2 "Task C"
 $ coffeecup stop
 # drink beer
 ```
+
+> [!NOTE]
+> This application goes very well with my VSCode extension for CoffeeCup. Check it out here: https://github.com/fischeversenker/coffeecup-vscode
 
 ## Installation
 
@@ -135,5 +138,5 @@ coffeecup help start
 
 # Development
 
-Coffeecup API Docs:
+CoffeeCup API Docs:
 https://dev.coffeecupapp.com/

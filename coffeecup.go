@@ -35,6 +35,19 @@ func main() {
 
 func LoginCommand() {
 	reader := bufio.NewReader(os.Stdin)
+	loggedInUser, err := GetUser()
+	if err == nil {
+		fmt.Printf("You are already logged in as \"%s\".\n", loggedInUser.Email)
+		fmt.Print("Do you want to login as someone else? (y/n) ")
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			panic(err)
+		}
+		if strings.TrimSpace(answer) == "n" {
+			return
+		}
+	}
+
 	fmt.Print("Enter company prefix (the \"acme\" in \"acme.coffeecup.app\"): ")
 	companyName, err := reader.ReadString('\n')
 	if err != nil {
@@ -63,12 +76,12 @@ func LoginCommand() {
 
 	StoreTokens(accessToken, refreshToken)
 
-	userId, err := GetUserId()
+	user, err := GetUser()
 	if err != nil {
 		panic(err)
 	}
 
-	StoreUserId(userId)
+	StoreUserId(user.Id)
 	fmt.Printf("Successfully logged in to %s as %s\n", strings.TrimSpace(companyName), strings.TrimSpace(username))
 }
 

@@ -54,25 +54,28 @@ func LoginWithPassword(company string, username string, password string) (string
 	return responseBody.AccessToken, responseBody.RefreshToken, nil
 }
 
-func GetUserId() (int, error) {
+type User struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
+}
+
+type UserResponse struct {
+	User User
+}
+
+func GetUser() (User, error) {
 	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/users/me", nil)
 	if err != nil {
-		return 0, err
+		return User{}, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+GetAccessTokenFromConfig())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return 0, err
+		return User{}, err
 	}
 	defer resp.Body.Close()
-
-	type UserResponse struct {
-		User struct {
-			Id int
-		}
-	}
 
 	var responseBody UserResponse
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
@@ -80,7 +83,7 @@ func GetUserId() (int, error) {
 		panic(err)
 	}
 
-	return responseBody.User.Id, nil
+	return responseBody.User, nil
 }
 
 func LoginWithRefreshToken() (string, string, error) {

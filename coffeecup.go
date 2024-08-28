@@ -20,7 +20,7 @@ func main() {
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.0.10") }, "Prints the version of CoffeeCup CLI")
+	mcli.Add("version", func() { fmt.Println("v0.0.11") }, "Prints the version of CoffeeCup CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")

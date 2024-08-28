@@ -136,7 +136,7 @@ or add a specific command to get more detailed help:
 coffeecup-cli help start
 ```
 
-# Development
+## Development
 
 CoffeeCup API Docs:
 https://dev.coffeecupapp.com/

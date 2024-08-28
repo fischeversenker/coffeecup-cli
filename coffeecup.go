@@ -19,6 +19,7 @@ func main() {
 	mcli.Add("start", StartCommand, "Starts/Resumes a time entry. Needs a project alias as argument. Optionally, you can provide a comment that will be appeneded to any existing comment.")
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
+	mcli.AddAlias("status", "today")
 
 	mcli.Add("version", func() { fmt.Println("v0.0.12") }, "Prints the version of CoffeeCup CLI")
 

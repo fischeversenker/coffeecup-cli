@@ -16,7 +16,7 @@ import (
 
 func main() {
 	mcli.Add("login", LoginCommand, "Login to CoffeeCup")
-	mcli.Add("start", StartCommand, "Starts/Resumes a time entry. Needs a project alias as argument. Optionally, you can provide a comment that will be appeneded to any existing comment.\n\nExamples:\n - coffeecup start myproject\n - coffeecup start myproject \"This is a comment\"")
+	mcli.Add("start", StartCommand, "Starts/Resumes a time entry. Needs a project alias as argument. Optionally, you can provide a comment that will be appeneded to any existing comment.")
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 
@@ -24,7 +24,7 @@ func main() {
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
-	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones. Use \"coffeecup projects list\" to figure out the ID of your project.\n\nExamples:\n - coffeecup projects alias\n - coffeecup projects alias 90454 myproject")
+	mcli.Add("projects alias", ProjectAliasCommand, "Lists the known aliases or sets new ones. Use the \"projects list\" command to figure out the ID of your project.")
 
 	// Enable shell auto-completion, see `program completion -h` for help.
 	// mcli.AddCompletion()
@@ -88,7 +88,7 @@ func ProjectsListCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
 			os.Exit(1)
 		}
 
@@ -161,7 +161,7 @@ func ProjectAliasCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
 			os.Exit(1)
 		}
 		lastTimeEntryForProject, err = GetLastTimeEntryForProject(project.Id)
@@ -197,7 +197,7 @@ func StartCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -316,7 +316,7 @@ func StopCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Printf("Please login first using %s'coffeecup login'%s\n", chalk.Cyan, chalk.Reset)
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()
@@ -361,7 +361,7 @@ func TodayCommand() {
 	if err != nil && err.Error() == "unauthorized" {
 		err = LoginUsingRefreshToken()
 		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using"), chalk.Bold.TextStyle("coffeecup login"))
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
 			os.Exit(1)
 		}
 		timeEntries, err = GetTodaysTimeEntries()

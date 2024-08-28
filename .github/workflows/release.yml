@@ -19,9 +19,9 @@ jobs:
 
       - name: Build binaries
         run: |
-          GOOS=windows go build -o bin/coffeecup.exe .
-          GOOS=darwin go build -o bin/coffeecup-darwin .
-          GOOS=linux go build -o bin/coffeecup-linux .
+          GOOS=windows go build -o bin/coffeecup-cli.exe ./...
+          GOOS=darwin go build -o bin/coffeecup-cli-darwin ./...
+          GOOS=linux go build -o bin/coffeecup-cli-linux ./...
         env:
           GOARCH: amd64
 
@@ -30,6 +30,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            bin/coffeecup.exe
-            bin/coffeecup-darwin
-            bin/coffeecup-linux
+            bin/coffeecup-cli.exe
+            bin/coffeecup-cli-darwin
+            bin/coffeecup-cli-linux

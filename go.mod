@@ -1,4 +1,4 @@
-module github.com/fischeversenker/coffeecup
+module github.com/fischeversenker/coffeecup-cli
 
 go 1.22
 

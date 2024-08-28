@@ -222,18 +222,15 @@ func StartCommand() {
 
 	cfg, _ := ReadConfig()
 	projectConfigs := cfg.Projects
-	var targetedProjectId int
-	var defaultTaskId int
+	var targetedProject ProjectConfig
 	for _, project := range projectConfigs {
 		if project.Alias == args.Alias {
-			fmt.Println("Found project alias", args.Alias)
-			targetedProjectId = project.Id
-			defaultTaskId = project.DefaultTaskId
+			targetedProject = project
 			break
 		}
 	}
-	if targetedProjectId == 0 {
-		fmt.Printf("Project alias %s'%s'%s not found 😱\nRun %s'coffeecup help projects alias'%s to learn how to set an alias.\n", chalk.Red, args.Alias, chalk.Reset, chalk.Cyan, chalk.Reset)
+	if targetedProject.Id == 0 {
+		fmt.Printf("Project alias %s'%s'%s not found 😱\nRun the %s'help projects alias'%s command to learn how to set an alias.\n", chalk.Red, args.Alias, chalk.Reset, chalk.Cyan, chalk.Reset)
 		os.Exit(1)
 	}
 
@@ -241,8 +238,8 @@ func StartCommand() {
 	wasRunningAlready := false
 	for _, timeEntry := range timeEntries {
 		if timeEntry.Running {
-			if targetedProjectId == timeEntry.ProjectId {
-				fmt.Printf("%s%s%s is running already\n", chalk.Green, args.Alias, chalk.Reset)
+			if targetedProject.Id == timeEntry.ProjectId {
+				fmt.Printf("%s%s%s is running already\n", chalk.Green, targetedProject.Alias, chalk.Reset)
 				if args.Comment != "" {
 					if timeEntry.Comment == "" {
 						timeEntry.Comment = "- " + args.Comment
@@ -259,21 +256,13 @@ func StartCommand() {
 			} else {
 				// wrong project is running, stop it
 				timeEntry.Running = false
-				var projectAlias string
-				for _, project := range projectConfigs {
-					if project.Id == timeEntry.ProjectId {
-						projectAlias = project.Alias
-						break
-					}
-				}
 				err := UpdateTimeEntry(timeEntry)
 				if err != nil {
 					panic(err)
 				}
-				fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
 			}
 		} else {
-			if targetedProjectId == timeEntry.ProjectId {
+			if targetedProject.Id == timeEntry.ProjectId {
 				// not running, resume it
 				timeEntry.Running = true
 				if args.Comment != "" {
@@ -287,7 +276,7 @@ func StartCommand() {
 				if err != nil {
 					panic(err)
 				}
-				fmt.Printf("Resumed previous time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
+				fmt.Printf("Resumed existing time entry for %s%s%s\n", chalk.Green, args.Alias, chalk.Reset)
 				resumedExistingTimeEntry = true
 			}
 		}
@@ -295,7 +284,7 @@ func StartCommand() {
 
 	if !resumedExistingTimeEntry && !wasRunningAlready {
 		// start a new time entry
-		projectId := targetedProjectId
+		projectId := targetedProject.Id
 		today := time.Now().Format("2006-01-02")
 		var comment string
 		if args.Comment != "" {
@@ -308,7 +297,7 @@ func StartCommand() {
 			Sorting:      len(timeEntries) + 1,
 			Running:      true,
 			Comment:      comment,
-			TaskId:       defaultTaskId,
+			TaskId:       targetedProject.DefaultTaskId,
 			TrackingType: "WORK",
 			UserId:       GetUserIdFromConfig(),
 		})

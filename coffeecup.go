@@ -393,7 +393,6 @@ func TodayCommand() {
 	for _, timeEntry := range timeEntries {
 		hours := timeEntry.Duration / 3600
 		minutes := (timeEntry.Duration % 3600) / 60
-		overallTime += timeEntry.Duration
 		timeString := fmt.Sprintf("%02dh %02dm", hours, minutes)
 
 		var projectAlias string

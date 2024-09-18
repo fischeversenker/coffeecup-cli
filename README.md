@@ -15,11 +15,13 @@ $ coffeecup-cli start project1 "Task B"
 $ coffeecup-cli start project2 "Task C"
 # do some work
 $ coffeecup-cli stop
-# drink beer
+# confirm that you've worked enough today
+$ coffeecup-cli today
+# close your laptop and drink a cup of tea on the couch
 ```
 
 > [!NOTE]
-> This application goes very well with my VSCode extension for CoffeeCup. Check it out here: https://github.com/fischeversenker/coffeecup-vscode
+> This application goes very well with my VSCode extension for CoffeeCup. Check it out here: https://marketplace.visualstudio.com/items?itemName=fischeversenker.coffeecup
 
 ## Installation
 
@@ -48,19 +50,27 @@ This will ask for your company name, your username, and your password. The `coff
 Once you logged in, you can now get your time entries of today:
 
 ```sh
-coffeecup-cli today
+coffeecup-cli status # alias: today
 ```
 
 This will produce something like this:
 
 ```sh
-$ coffeecup-cli today
+$ coffeecup-cli status
 Project 1 | ⌛ 01h 15m | 📝 - My Comment for this time entry
 Project 2 |    00h 45m | 📝 - Other Comment
 total     |    02h 00m
 ```
 
-> Add `-c` to the command to get a more "colorful" output: `coffeecup-cli today -c`
+> Add `--color` (or `-c`) to the command to get a more "colorful" output: `coffeecup-cli today -c`
+
+### Yesterday's time entries
+
+Similar to the `status`/`today` command, there is a `yesterday` command that shows the time entries of yesterday:
+
+```sh
+coffeecup-cli yesterday
+```
 
 ### List projects
 
@@ -136,7 +146,13 @@ or add a specific command to get more detailed help:
 coffeecup-cli help start
 ```
 
-## Development
+## Usage tips
 
-CoffeeCup API Docs:
-https://dev.coffeecupapp.com/
+Add an alias for `coffeecup-cli` to your shell profile to make it easier to interact with Coffeecup. I aliased `coffeecup-cli` to `cc` and `coffeecup-cli status --color` to `ccst` for very convenient workflows:
+
+Add this to your `~/.bashrc` (or `~/.zshrc` or similar):
+```
+alias cc='coffeecup-cli'
+alias ccst='coffeecup-cli status -c'
+```
+

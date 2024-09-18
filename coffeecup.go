@@ -20,8 +20,9 @@ func main() {
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 	mcli.AddAlias("status", "today")
+	mcli.Add("yesterday", YesterdayCommand, "Lists yesterday's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.0.12") }, "Prints the version of CoffeeCup CLI")
+	mcli.Add("version", func() { fmt.Println("v0.0.13") }, "Prints the version of CoffeeCup CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
@@ -442,4 +443,81 @@ func TodayCommand() {
 	} else {
 		fmt.Printf("%-10s |    %s\n", "total", time)
 	}
+}
+
+func YesterdayCommand() {
+	timeEntries, err := GetYesterdaysTimeEntries()
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+			os.Exit(1)
+		}
+		timeEntries, err = GetYesterdaysTimeEntries()
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	cfg, _ := ReadConfig()
+	projectConfigs := cfg.Projects
+
+	var projects []Project
+
+	if len(timeEntries) == 0 {
+		fmt.Println("No time entries for yesterday")
+		return
+	}
+
+	var overallTime int
+	var longestComment int
+
+	for _, timeEntry := range timeEntries {
+		overallTime += timeEntry.Duration
+		longestComment = max(longestComment, len(timeEntry.Comment))
+	}
+
+	for _, timeEntry := range timeEntries {
+		hours := timeEntry.Duration / 3600
+		minutes := (timeEntry.Duration % 3600) / 60
+		timeString := fmt.Sprintf("%02dh %02dm", hours, minutes)
+
+		var projectAlias string
+		for _, project := range projectConfigs {
+			if project.Id == timeEntry.ProjectId {
+				projectAlias = project.Alias
+				break
+			}
+		}
+
+		// if we don't have an alias for this project, use the full name
+		if projectAlias == "" {
+			if projects == nil {
+				projects, err = GetProjects()
+				if err != nil {
+					panic(err)
+				}
+			}
+			for _, project := range projects {
+				if project.Id == timeEntry.ProjectId {
+					projectAlias = project.Name
+					break
+				}
+			}
+		}
+
+		comment := strings.ReplaceAll(timeEntry.Comment, "\n", " ")
+		if timeEntry.Running {
+			fmt.Printf("%-10s | ⌛ %s | 📝 %-*s\n", projectAlias, timeString, longestComment, comment)
+		} else {
+			fmt.Printf("%-10s |    %s | 📝 %-*s\n", projectAlias, timeString, longestComment, comment)
+		}
+	}
+
+	hours := overallTime / 3600
+	minutes := (overallTime % 3600) / 60
+	time := fmt.Sprintf("%02dh %02dm", hours, minutes)
+	fmt.Printf("%-10s |    %s\n", "total", time)
 }

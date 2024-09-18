@@ -64,7 +64,7 @@ func ReadConfig() (Config, error) {
 		return Config{}, err
 	}
 
-	configFilepath := filepath.Join(os.Getenv("HOME"), ConfigFolderPath, ConfigFileName)
+	configFilepath := GetConfigPath()
 	configFile, err := os.ReadFile(configFilepath)
 	if err != nil {
 		return Config{}, err
@@ -90,7 +90,7 @@ func WriteConfig(cfg Config) error {
 		return err
 	}
 
-	configFilepath := filepath.Join(os.Getenv("HOME"), ConfigFolderPath, ConfigFileName)
+	configFilepath := GetConfigPath()
 	err = os.WriteFile(configFilepath, updatedConfig, 0644)
 	if err != nil {
 		return err

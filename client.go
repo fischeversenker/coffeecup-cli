@@ -196,9 +196,19 @@ type TimeEntriesResponse struct {
 }
 
 func GetTodaysTimeEntries() ([]TimeEntry, error) {
-	userId := strconv.Itoa(GetUserIdFromConfig())
 	today := time.Now().Format("2006-01-02")
-	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&user=" + userId + "&day=" + today + "&sort=day%20ASC,sorting%20ASC"
+	return getTimeEntriesForDay(today)
+}
+
+func GetYesterdaysTimeEntries() ([]TimeEntry, error) {
+	today := time.Now()
+	yesterday := today.AddDate(0, 0, -1).Format("2006-01-02")
+	return getTimeEntriesForDay(yesterday)
+}
+
+func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
+	userId := strconv.Itoa(GetUserIdFromConfig())
+	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&user=" + userId + "&day=" + day + "&sort=day%20ASC,sorting%20ASC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

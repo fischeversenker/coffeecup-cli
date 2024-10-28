@@ -200,10 +200,17 @@ func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	return getTimeEntriesForDay(today)
 }
 
+// this actually returns the time entries of the previous working day.
+// it doesn't need to be yesterday, could be last Friday if it's a Monday today.
 func GetYesterdaysTimeEntries() ([]TimeEntry, error) {
 	today := time.Now()
-	yesterday := today.AddDate(0, 0, -1).Format("2006-01-02")
-	return getTimeEntriesForDay(yesterday)
+	yesterday := today.AddDate(0, 0, -1)
+	yesterdaysWeekday := yesterday.Weekday()
+	for ; yesterdaysWeekday == time.Saturday || yesterdaysWeekday == time.Sunday; yesterdaysWeekday = yesterday.Weekday() {
+		yesterday = yesterday.AddDate(0, 0, -1)
+	}
+	yesterdayFormatted := yesterday.Format("2006-01-02")
+	return getTimeEntriesForDay(yesterdayFormatted)
 }
 
 func getTimeEntriesForDay(day string) ([]TimeEntry, error) {

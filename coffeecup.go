@@ -22,7 +22,7 @@ func main() {
 	mcli.AddAlias("status", "today")
 	mcli.Add("yesterday", YesterdayCommand, "Lists yesterday's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.0.13") }, "Prints the version of CoffeeCup CLI")
+	mcli.Add("version", func() { fmt.Println("v0.0.14") }, "Prints the version of CoffeeCup CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")

@@ -19,6 +19,7 @@ type Config struct {
 		AccessToken  string
 		RefreshToken string
 		Id           int
+		Company      string
 	}
 	Projects map[string]ProjectConfig
 }
@@ -56,6 +57,18 @@ func StoreUserId(userId int) {
 func GetUserIdFromConfig() int {
 	cfg, _ := ReadConfig()
 	return cfg.User.Id
+}
+
+func StoreCompany(company string) {
+	cfg, _ := ReadConfig()
+	cfg.User.Company = company
+
+	WriteConfig(cfg)
+}
+
+func GetCompanyFromConfig() string {
+	cfg, _ := ReadConfig()
+	return cfg.User.Company
 }
 
 func ReadConfig() (Config, error) {

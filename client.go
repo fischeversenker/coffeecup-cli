@@ -19,22 +19,29 @@ type TokenResponse struct {
 	Status       int    `json:"status"`
 }
 
+var publicApiToken = "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM="
+
+func GetApiBaseUrl() string {
+	cfg, _ := ReadConfig()
+	return "https://" + cfg.User.Company + ".aerion.app"
+}
+
 // returns accesstoken, refreshtoken, and error
-func LoginWithPassword(company string, username string, password string) (string, string, error) {
+func LoginWithPassword(username string, password string) (string, string, error) {
 	reqBody := url.Values{
 		"grant_type": []string{"password"},
 		"username":   []string{username},
 		"password":   []string{password},
 	}
 
-	req, err := http.NewRequest("POST", "https://api.coffeecupapp.com/oauth2/token", strings.NewReader(reqBody.Encode()))
+	req, err := http.NewRequest("POST", GetApiBaseUrl()+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
 		return "", "", err
 	}
 
-	req.Header.Set("Authorization", "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM=")
+	req.Header.Set("Authorization", publicApiToken)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("companyurl", strings.Join([]string{"https://", company, ".coffeecup.app"}, ""))
+	req.Header.Set("companyurl", GetApiBaseUrl())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -64,7 +71,7 @@ type UserResponse struct {
 }
 
 func GetUser() (User, error) {
-	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/users/me", nil)
+	req, err := http.NewRequest("GET", GetApiBaseUrl()+"/v1/users/me", nil)
 	if err != nil {
 		return User{}, err
 	}
@@ -96,12 +103,12 @@ func LoginWithRefreshToken() (string, string, error) {
 		"refresh_token": []string{refreshToken},
 	}
 
-	req, err := http.NewRequest("POST", "https://api.coffeecupapp.com/oauth2/token", strings.NewReader(reqBody.Encode()))
+	req, err := http.NewRequest("POST", GetApiBaseUrl()+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
 		return "", "", err
 	}
 
-	req.Header.Set("Authorization", "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM=")
+	req.Header.Set("Authorization", publicApiToken)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -138,7 +145,7 @@ type ProjectsResponse struct {
 }
 
 func GetProjects() ([]Project, error) {
-	req, err := http.NewRequest("GET", "https://api.coffeecupapp.com/v1/projects?status=1", nil)
+	req, err := http.NewRequest("GET", GetApiBaseUrl()+"/v1/projects?status=1", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +222,7 @@ func GetYesterdaysTimeEntries() ([]TimeEntry, error) {
 
 func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
-	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1000&user=" + userId + "&day=" + day + "&sort=day%20ASC,sorting%20ASC"
+	url := GetApiBaseUrl() + "/v1/timeentries?limit=1000&user=" + userId + "&day=" + day + "&sort=day%20ASC,sorting%20ASC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -246,7 +253,7 @@ func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
 
 func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
-	url := "https://api.coffeecupapp.com/v1/timeentries?limit=1&user=" + userId + "&project=" + strconv.Itoa(projectId) + "&sort=day%20DESC"
+	url := GetApiBaseUrl() + "/v1/timeentries?limit=1&user=" + userId + "&project=" + strconv.Itoa(projectId) + "&sort=day%20DESC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return TimeEntry{}, err
@@ -280,7 +287,7 @@ func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
 }
 
 func UpdateTimeEntry(timeEntry TimeEntry) error {
-	url := "https://api.coffeecupapp.com/v1/timeEntries/" + strconv.Itoa(timeEntry.Id)
+	url := GetApiBaseUrl() + "/v1/timeEntries/" + strconv.Itoa(timeEntry.Id)
 
 	type TimeEntryUpdate struct {
 		TimeEntry TimeEntry `json:"timeEntry"`
@@ -339,7 +346,7 @@ type NewTimeEntry struct {
 }
 
 func CreateTimeEntry(timeEntry NewTimeEntry) error {
-	url := "https://api.coffeecupapp.com/v1/timeEntries"
+	url := GetApiBaseUrl() + "/v1/timeEntries"
 
 	type TimeEntryCreation struct {
 		TimeEntry NewTimeEntry `json:"timeEntry"`

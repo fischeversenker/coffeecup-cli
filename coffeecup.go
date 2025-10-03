@@ -51,11 +51,12 @@ func LoginCommand() {
 		}
 	}
 
-	fmt.Print("Enter company prefix (the \"acme\" in \"acme.coffeecup.app\"): ")
+	fmt.Print("Enter company prefix (the \"acme\" in \"acme.aerion.app\"): ")
 	companyName, err := reader.ReadString('\n')
 	if err != nil {
 		panic(err)
 	}
+	StoreCompany(strings.TrimSpace(companyName))
 
 	fmt.Print("Enter Username: ")
 	username, err := reader.ReadString('\n')
@@ -72,7 +73,7 @@ func LoginCommand() {
 	fmt.Println()
 	fmt.Println()
 
-	accessToken, refreshToken, err := LoginWithPassword(strings.TrimSpace(companyName), strings.TrimSpace(username), string(bytePassword))
+	accessToken, refreshToken, err := LoginWithPassword(strings.TrimSpace(username), string(bytePassword))
 	if err != nil {
 		panic(err)
 	}
@@ -202,7 +203,7 @@ func StartCommand() {
 	var args struct {
 		Alias   string `cli:"#R, alias, The alias of the project"`
 		Comment string `cli:"comment, The comment for the time entry"`
-		Amend   bool   `cli:"amend, Add to the previous entry"`
+		Amend   bool   `cli:"-amend, Add to the previous entry"`
 	}
 	_, err := mcli.Parse(&args)
 	if err != nil {

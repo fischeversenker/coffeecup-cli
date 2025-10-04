@@ -25,7 +25,7 @@ func main() {
 	mcli.AddAlias("status", "today")
 	mcli.Add("yesterday", YesterdayCommand, "Lists yesterday's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.3.0") }, "Prints the version of aerion CLI")
+	mcli.Add("version", func() { fmt.Println("v0.3.1") }, "Prints the version of aerion CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")

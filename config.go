@@ -14,6 +14,11 @@ type ProjectConfig struct {
 	DefaultTaskId int
 }
 
+type JiraConfig struct {
+	Enabled      bool
+	TicketPrefix string
+}
+
 type Config struct {
 	User struct {
 		AccessToken  string
@@ -22,11 +27,12 @@ type Config struct {
 		Company      string
 	}
 	Projects map[string]ProjectConfig
+	Jira     JiraConfig
 }
 
 const (
-	ConfigFolderPath = ".config/coffeecup"
-	ConfigFileName   = "coffeecup.toml"
+	ConfigFolderPath = ".config/aerion"
+	ConfigFileName   = "config.toml"
 )
 
 func StoreTokens(accessToken string, refreshToken string) error {

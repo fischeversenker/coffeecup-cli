@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,11 +20,36 @@ type TokenResponse struct {
 	Status       int    `json:"status"`
 }
 
-var publicApiToken = "Basic Y29mZmVlY3VwLWNsaTpwdWJsaWM="
+var publicApiToken = "Basic " + base64.StdEncoding.EncodeToString([]byte("coffeecup-cli:public"))
 
-func GetApiBaseUrl() string {
-	cfg, _ := ReadConfig()
-	return "https://" + cfg.User.Company + ".aerion.app"
+func GetApiBaseUrl() (string, error) {
+	cfg, err := ReadConfig()
+	if err != nil {
+		return "", err
+	}
+
+	if cfg.User.Company == "" {
+		return "", fmt.Errorf("No company set. Are you logged in? Please run the login command first.")
+	}
+	return cfg.User.Company, nil
+}
+
+func EnsureLoggedIn() error {
+	_, err := GetUser()
+
+	// retry if unauthorized
+	if err != nil && err.Error() == "unauthorized" {
+		err = LoginUsingRefreshToken()
+		if err != nil {
+			return err
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // returns accesstoken, refreshtoken, and error
@@ -34,14 +60,19 @@ func LoginWithPassword(username string, password string) (string, string, error)
 		"password":   []string{password},
 	}
 
-	req, err := http.NewRequest("POST", GetApiBaseUrl()+"/oauth2/token", strings.NewReader(reqBody.Encode()))
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return "", "", err
+	}
+
+	req, err := http.NewRequest("POST", apiBaseURL+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
 		return "", "", err
 	}
 
 	req.Header.Set("Authorization", publicApiToken)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("companyurl", GetApiBaseUrl())
+	req.Header.Set("companyurl", apiBaseURL)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -71,7 +102,12 @@ type UserResponse struct {
 }
 
 func GetUser() (User, error) {
-	req, err := http.NewRequest("GET", GetApiBaseUrl()+"/v1/users/me", nil)
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return User{}, err
+	}
+
+	req, err := http.NewRequest("GET", apiBaseURL+"/v1/users/me", nil)
 	if err != nil {
 		return User{}, err
 	}
@@ -103,7 +139,12 @@ func LoginWithRefreshToken() (string, string, error) {
 		"refresh_token": []string{refreshToken},
 	}
 
-	req, err := http.NewRequest("POST", GetApiBaseUrl()+"/oauth2/token", strings.NewReader(reqBody.Encode()))
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return "", "", err
+	}
+
+	req, err := http.NewRequest("POST", apiBaseURL+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
 		return "", "", err
 	}
@@ -145,7 +186,12 @@ type ProjectsResponse struct {
 }
 
 func GetProjects() ([]Project, error) {
-	req, err := http.NewRequest("GET", GetApiBaseUrl()+"/v1/projects?status=1", nil)
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", apiBaseURL+"/v1/projects?status=1", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +268,12 @@ func GetYesterdaysTimeEntries() ([]TimeEntry, error) {
 
 func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
-	url := GetApiBaseUrl() + "/v1/timeentries?limit=1000&user=" + userId + "&day=" + day + "&sort=day%20ASC,sorting%20ASC"
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return nil, err
+	}
+
+	url := apiBaseURL + "/v1/timeentries?limit=1000&user=" + userId + "&day=" + day + "&sort=day%20ASC,sorting%20ASC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -253,7 +304,12 @@ func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
 
 func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
-	url := GetApiBaseUrl() + "/v1/timeentries?limit=1&user=" + userId + "&project=" + strconv.Itoa(projectId) + "&sort=day%20DESC"
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return TimeEntry{}, err
+	}
+
+	url := apiBaseURL + "/v1/timeentries?limit=1&user=" + userId + "&project=" + strconv.Itoa(projectId) + "&sort=day%20DESC"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return TimeEntry{}, err
@@ -287,7 +343,12 @@ func GetLastTimeEntryForProject(projectId int) (TimeEntry, error) {
 }
 
 func UpdateTimeEntry(timeEntry TimeEntry) error {
-	url := GetApiBaseUrl() + "/v1/timeEntries/" + strconv.Itoa(timeEntry.Id)
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return err
+	}
+
+	url := apiBaseURL + "/v1/timeEntries/" + strconv.Itoa(timeEntry.Id)
 
 	type TimeEntryUpdate struct {
 		TimeEntry TimeEntry `json:"timeEntry"`
@@ -346,7 +407,12 @@ type NewTimeEntry struct {
 }
 
 func CreateTimeEntry(timeEntry NewTimeEntry) error {
-	url := GetApiBaseUrl() + "/v1/timeEntries"
+	apiBaseURL, err := GetApiBaseUrl()
+	if err != nil {
+		return err
+	}
+
+	url := apiBaseURL + "/v1/timeEntries"
 
 	type TimeEntryCreation struct {
 		TimeEntry NewTimeEntry `json:"timeEntry"`

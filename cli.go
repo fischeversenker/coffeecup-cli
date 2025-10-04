@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,14 +18,14 @@ import (
 )
 
 func main() {
-	mcli.Add("login", LoginCommand, "Login to CoffeeCup")
+	mcli.Add("login", LoginCommand, "Login to Aerion")
 	mcli.Add("start", StartCommand, "Starts/Resumes a time entry. Needs a project alias as argument. Optionally, you can provide a comment that will be appeneded to any existing comment.")
 	mcli.Add("stop", StopCommand, "Stops any running time entries")
 	mcli.Add("today", TodayCommand, "Lists today's time entries")
 	mcli.AddAlias("status", "today")
 	mcli.Add("yesterday", YesterdayCommand, "Lists yesterday's time entries")
 
-	mcli.Add("version", func() { fmt.Println("v0.2.0") }, "Prints the version of CoffeeCup CLI")
+	mcli.Add("version", func() { fmt.Println("v0.2.0") }, "Prints the version of aerion CLI")
 
 	mcli.AddGroup("projects", "Lists projects and assign aliases to your active projects")
 	mcli.Add("projects list", ProjectsListCommand, "Lists all active projects")
@@ -39,6 +41,7 @@ func main() {
 func LoginCommand() {
 	reader := bufio.NewReader(os.Stdin)
 	loggedInUser, err := GetUser()
+	// fixme: user is always seen as logged in (as long as there is content in config file?)
 	if err == nil {
 		fmt.Printf("You are already logged in as \"%s\".\n", loggedInUser.Email)
 		fmt.Print("Do you want to login as someone else? (y/n) ")
@@ -99,18 +102,13 @@ func LoginUsingRefreshToken() error {
 }
 
 func ProjectsListCommand() {
-	projects, err := GetProjects()
-
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-
-		projects, err = GetProjects()
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
 	}
+
+	projects, err := GetProjects()
 
 	if err != nil {
 		panic(err)
@@ -140,11 +138,17 @@ func ProjectsListCommand() {
 }
 
 func ProjectAliasCommand() {
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
+	}
+
 	var args struct {
 		ProjectId string `cli:"id, The ID of the project (optional)"`
 		Alias     string `cli:"alias, The alias of the project (optional)"`
 	}
-	_, err := mcli.Parse(&args)
+	_, err = mcli.Parse(&args)
 	if err != nil {
 		panic(err)
 	}
@@ -174,15 +178,6 @@ func ProjectAliasCommand() {
 	}
 
 	lastTimeEntryForProject, err := GetLastTimeEntryForProject(project.Id)
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-		lastTimeEntryForProject, err = GetLastTimeEntryForProject(project.Id)
-	}
 
 	if err != nil {
 		fmt.Printf("%sCouldn't determine your default Task ID for project '%s'%s.\n", chalk.Red, project.Name, chalk.Reset)
@@ -200,12 +195,18 @@ func ProjectAliasCommand() {
 }
 
 func StartCommand() {
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
+	}
+
 	var args struct {
 		Alias   string `cli:"#R, alias, The alias of the project"`
 		Comment string `cli:"comment, The comment for the time entry"`
 		Amend   bool   `cli:"-amend, Add to the previous entry"`
 	}
-	_, err := mcli.Parse(&args)
+	_, err = mcli.Parse(&args)
 	if err != nil {
 		panic(err)
 	}
@@ -215,15 +216,6 @@ func StartCommand() {
 	}
 
 	timeEntries, err := GetTodaysTimeEntries()
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-		timeEntries, err = GetTodaysTimeEntries()
-	}
 
 	if err != nil {
 		panic(err)
@@ -348,16 +340,13 @@ func StartCommand() {
 }
 
 func StopCommand() {
-	timeEntries, err := GetTodaysTimeEntries()
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-		timeEntries, err = GetTodaysTimeEntries()
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
 	}
+
+	timeEntries, err := GetTodaysTimeEntries()
 
 	if err != nil {
 		panic(err)
@@ -375,6 +364,31 @@ func StopCommand() {
 					break
 				}
 			}
+
+			if cfg.Jira.Enabled {
+				ticketRegex := regexp.MustCompile("(" + cfg.Jira.TicketPrefix + "-\\d+)")
+				ticketNumber := ticketRegex.FindStringSubmatch(timeEntry.Comment)
+				if len(ticketNumber) > 2 {
+					fmt.Printf("Found %d tickets in time entry. Not sure which one to log time to. Please log manually in JIRA.\n", len(ticketNumber)-1)
+				} else if len(ticketNumber) == 2 {
+					worklog, _ := GetWorklogEntry(timeEntry.Id)
+					addedDuration := timeEntry.Duration - worklog.Duration
+					if addedDuration > 60 {
+						durationString := SecondsToHoursMinutes(addedDuration)
+						fmt.Printf("Logging %s to JIRA for ticket %s...\n", durationString, ticketNumber[1])
+
+						cmd := exec.Command("jira", "issue", "worklog", "add", ticketNumber[1], durationString, "--no-input")
+						_, err := cmd.Output()
+
+						if err != nil {
+							fmt.Println(err.Error())
+							return
+						}
+						UpsertWorklogEntry(WorklogEntry{timeEntry.Id, timeEntry.Duration})
+					}
+				}
+			}
+
 			fmt.Printf("Stopped %s%s%s\n", chalk.Red, projectAlias, chalk.Reset)
 			err := UpdateTimeEntry(timeEntry)
 			if err != nil {
@@ -385,24 +399,21 @@ func StopCommand() {
 }
 
 func TodayCommand() {
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
+	}
+
 	var args struct {
 		Color bool `cli:"-c, --color, enable colors in the output"`
 	}
-	_, err := mcli.Parse(&args)
+	_, err = mcli.Parse(&args)
 	if err != nil {
 		panic(err)
 	}
 
 	timeEntries, err := GetTodaysTimeEntries()
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-		timeEntries, err = GetTodaysTimeEntries()
-	}
 
 	if err != nil {
 		panic(err)
@@ -479,16 +490,13 @@ func TodayCommand() {
 }
 
 func YesterdayCommand() {
-	timeEntries, err := GetYesterdaysTimeEntries()
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
-			os.Exit(1)
-		}
-		timeEntries, err = GetYesterdaysTimeEntries()
+	err := EnsureLoggedIn()
+	if err != nil {
+		fmt.Println(chalk.Yellow.Color("Please login first using the 'login' command"))
+		return
 	}
+
+	timeEntries, err := GetYesterdaysTimeEntries()
 
 	if err != nil {
 		panic(err)
@@ -553,4 +561,21 @@ func YesterdayCommand() {
 	minutes := (overallTime % 3600) / 60
 	time := fmt.Sprintf("%02dh %02dm", hours, minutes)
 	fmt.Printf("%-10s |    %s\n", "total", time)
+}
+
+func SecondsToHoursMinutes(seconds int) string {
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+
+	var result string
+	if hours > 0 {
+		result = fmt.Sprintf("%dh", hours)
+	}
+	if minutes > 0 {
+		if hours > 0 {
+			result += " "
+		}
+		result += fmt.Sprintf("%dm", minutes)
+	}
+	return result
 }

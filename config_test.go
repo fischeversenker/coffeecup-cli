@@ -16,7 +16,7 @@ func TestReadConfig(t *testing.T) {
 	defer os.Setenv("HOME", oldHome)
 
 	// Create the config file
-	configFilepath := filepath.Join(tempDir, ".config", "coffeecup", "coffeecup.toml")
+	configFilepath := filepath.Join(tempDir, ".config", "aerion", ConfigFileName)
 	configContent := []byte(`
 		[User]
 		AccessToken  = "test-access-token"

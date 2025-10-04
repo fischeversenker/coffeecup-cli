@@ -1,4 +1,4 @@
-module github.com/fischeversenker/coffeecup-cli
+module github.com/fischeversenker/aerion-cli
 
 go 1.22
 

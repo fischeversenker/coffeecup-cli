@@ -15,7 +15,7 @@ func TestGetApiBaseUrlReturnsCompany(t *testing.T) {
 	})
 
 	cfg := Config{}
-	cfg.User.Company = "https://example.com"
+	cfg.User.Company = "acme"
 
 	if err := WriteConfig(cfg); err != nil {
 		t.Fatalf("WriteConfig error: %v", err)
@@ -26,7 +26,7 @@ func TestGetApiBaseUrlReturnsCompany(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if baseURL != cfg.User.Company {
+	if baseURL != "https://acme.aerion.app" {
 		t.Fatalf("expected base url %q, got %q", cfg.User.Company, baseURL)
 	}
 }

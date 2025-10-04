@@ -253,7 +253,7 @@ type TimeEntriesResponse struct {
 
 func GetTodaysTimeEntries() ([]TimeEntry, error) {
 	today := time.Now().Format("2006-01-02")
-	return getTimeEntriesForDay(today)
+	return GetTimeEntriesForDay(today)
 }
 
 // this actually returns the time entries of the previous working day.
@@ -266,10 +266,10 @@ func GetYesterdaysTimeEntries() ([]TimeEntry, error) {
 		yesterday = yesterday.AddDate(0, 0, -1)
 	}
 	yesterdayFormatted := yesterday.Format("2006-01-02")
-	return getTimeEntriesForDay(yesterdayFormatted)
+	return GetTimeEntriesForDay(yesterdayFormatted)
 }
 
-func getTimeEntriesForDay(day string) ([]TimeEntry, error) {
+func GetTimeEntriesForDay(day string) ([]TimeEntry, error) {
 	userId := strconv.Itoa(GetUserIdFromConfig())
 	apiBaseURL, err := GetApiBaseUrl()
 	if err != nil {

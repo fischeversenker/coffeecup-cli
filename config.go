@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -22,6 +23,7 @@ type JiraConfig struct {
 type Config struct {
 	User struct {
 		AccessToken  string
+		ExpiresAt    int64
 		RefreshToken string
 		Id           int
 		Company      string
@@ -35,10 +37,13 @@ const (
 	ConfigFileName   = "config.toml"
 )
 
-func StoreTokens(accessToken string, refreshToken string) error {
+func StoreTokens(accessToken string, refreshToken string, expiresIn int) error {
 	cfg, _ := ReadConfig()
 	cfg.User.AccessToken = accessToken
 	cfg.User.RefreshToken = refreshToken
+
+	expiresAt := time.Now().Unix() + int64(expiresIn)*1000
+	cfg.User.ExpiresAt = expiresAt
 
 	return WriteConfig(cfg)
 }

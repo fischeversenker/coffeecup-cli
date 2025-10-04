@@ -15,6 +15,7 @@ import (
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
 	Error        string `json:"error"`
 	Raw          string `json:"raw"`
 	Status       int    `json:"status"`
@@ -31,29 +32,24 @@ func GetApiBaseUrl() (string, error) {
 	if cfg.User.Company == "" {
 		return "", fmt.Errorf("No company set. Are you logged in? Please run the login command first.")
 	}
-	return cfg.User.Company, nil
+	return "https://" + cfg.User.Company + ".aerion.app", nil
 }
 
 func EnsureLoggedIn() error {
-	_, err := GetUser()
-
-	// retry if unauthorized
-	if err != nil && err.Error() == "unauthorized" {
-		err = LoginUsingRefreshToken()
-		if err != nil {
-			return err
-		}
-	}
-
+	cfg, err := ReadConfig()
 	if err != nil {
 		return err
 	}
-	return nil
 
+	if cfg.User.ExpiresAt > time.Now().Unix() {
+		return nil
+	}
+
+	return LoginWithRefreshToken()
 }
 
 // returns accesstoken, refreshtoken, and error
-func LoginWithPassword(username string, password string) (string, string, error) {
+func LoginWithPassword(username string, password string) error {
 	reqBody := url.Values{
 		"grant_type": []string{"password"},
 		"username":   []string{username},
@@ -62,12 +58,12 @@ func LoginWithPassword(username string, password string) (string, string, error)
 
 	apiBaseURL, err := GetApiBaseUrl()
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	req, err := http.NewRequest("POST", apiBaseURL+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	req.Header.Set("Authorization", publicApiToken)
@@ -76,7 +72,7 @@ func LoginWithPassword(username string, password string) (string, string, error)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -85,11 +81,14 @@ func LoginWithPassword(username string, password string) (string, string, error)
 	if err != nil {
 		panic(err)
 	}
+
 	if responseBody.Error != "" {
-		return "", "", fmt.Errorf(responseBody.Raw)
+		return fmt.Errorf(responseBody.Raw)
 	}
 
-	return responseBody.AccessToken, responseBody.RefreshToken, nil
+	StoreTokens(responseBody.AccessToken, responseBody.RefreshToken, responseBody.ExpiresIn)
+
+	return nil
 }
 
 type User struct {
@@ -118,6 +117,9 @@ func GetUser() (User, error) {
 	if err != nil {
 		return User{}, err
 	}
+	if resp.StatusCode != 200 {
+		return User{}, fmt.Errorf("unauthorized")
+	}
 	defer resp.Body.Close()
 
 	var responseBody UserResponse
@@ -129,10 +131,10 @@ func GetUser() (User, error) {
 	return responseBody.User, nil
 }
 
-func LoginWithRefreshToken() (string, string, error) {
+func LoginWithRefreshToken() error {
 	refreshToken := GetRefreshTokenFromConfig()
 	if refreshToken == "" {
-		return "", "", fmt.Errorf("no refresh token found")
+		return fmt.Errorf("no refresh token found")
 	}
 	reqBody := url.Values{
 		"grant_type":    []string{"refresh_token"},
@@ -141,12 +143,12 @@ func LoginWithRefreshToken() (string, string, error) {
 
 	apiBaseURL, err := GetApiBaseUrl()
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	req, err := http.NewRequest("POST", apiBaseURL+"/oauth2/token", strings.NewReader(reqBody.Encode()))
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	req.Header.Set("Authorization", publicApiToken)
@@ -154,7 +156,7 @@ func LoginWithRefreshToken() (string, string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -164,10 +166,11 @@ func LoginWithRefreshToken() (string, string, error) {
 		panic(err)
 	}
 	if responseBody.Error != "" {
-		return "", "", fmt.Errorf(responseBody.Raw)
+		return fmt.Errorf(responseBody.Raw)
 	}
 
-	return responseBody.AccessToken, responseBody.RefreshToken, nil
+	StoreTokens(responseBody.AccessToken, responseBody.RefreshToken, responseBody.ExpiresIn)
+	return nil
 }
 
 type Project struct {

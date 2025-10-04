@@ -76,12 +76,10 @@ func LoginCommand() {
 	fmt.Println()
 	fmt.Println()
 
-	accessToken, refreshToken, err := LoginWithPassword(strings.TrimSpace(username), string(bytePassword))
+	err = LoginWithPassword(strings.TrimSpace(username), string(bytePassword))
 	if err != nil {
 		panic(err)
 	}
-
-	StoreTokens(accessToken, refreshToken)
 
 	user, err := GetUser()
 	if err != nil {
@@ -90,15 +88,6 @@ func LoginCommand() {
 
 	StoreUserId(user.Id)
 	fmt.Printf("Successfully logged in to %s as %s\n", strings.TrimSpace(companyName), strings.TrimSpace(username))
-}
-
-func LoginUsingRefreshToken() error {
-	accessToken, refreshToken, err := LoginWithRefreshToken()
-	if err != nil {
-		return err
-	}
-
-	return StoreTokens(accessToken, refreshToken)
 }
 
 func ProjectsListCommand() {
